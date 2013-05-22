@@ -52,10 +52,33 @@ void test_array_of(){
 	array_destroy(a);
 }
 
+void test_amortized_doubling(){
+	array_p a = array_of(double);
+	check_int(a->capacity, 0);
+	
+	array_append(a, double, 1.0);
+	check_int(a->capacity, 1);
+	array_append(a, double, 1.0);
+	check_int(a->capacity, 2);
+	array_append(a, double, 1.0);
+	check_int(a->capacity, 4);
+	array_append(a, double, 1.0);
+	check_int(a->capacity, 4);
+	
+	array_resize(a, 800);
+	check_int(a->capacity, 1024);
+	
+	array_resize(a, 15);
+	check_int(a->capacity, 32);
+	
+	array_destroy(a);
+}
+
 int main(){
 	run(test_alloc);
 	run(test_access);
 	run(test_append);
 	run(test_array_of);
+	run(test_amortized_doubling);
 	return show_report();
 }

@@ -22,6 +22,8 @@ void*   array_resize(array_p array, size_t new_length);
 
 /*
 
+Further ideas:
+
 // Searches for the first occurence of value in the array
 size_t array_find(array, value)
 
