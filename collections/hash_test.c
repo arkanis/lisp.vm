@@ -253,6 +253,21 @@ void test_snap_to_prime(){
 		check_int(snap_to_prime(samples[i]), samples[i+1]);
 }
 
+void test_dict(){
+	dict_p d = dict_of(int);
+	
+	dict_put(d, "foo", int, 0);
+	dict_put(d, "bar", int, 8);
+	dict_put(d, "hurdelgrumpf", int, 15);
+	check_int(d->length, 3);
+	
+	check_int( dict_get(d, "foo", int), 0 );
+	check_int( dict_get(d, "hurdelgrumpf", int), 15 );
+	check_int( dict_get(d, "bar", int), 8 );
+	
+	dict_destroy(d);
+}
+
 int main(){
 	run(test_alloc);
 	run(test_put_and_get_new_elem);
@@ -265,5 +280,6 @@ int main(){
 	run(test_resize);
 	run(test_automatic_prime_resize);
 	run(test_snap_to_prime);
+	run(test_dict);
 	return show_report();
 }
