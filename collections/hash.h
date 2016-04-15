@@ -10,6 +10,12 @@
 "Hash" is a hash table with int64_t or int32_t keys (depending on the platform).
 "Dict" is a hash table with string keys (const char *).
 
+TODO:
+
+- rename all internal hash variables to hashmap
+- update documentation to use the name "hashmap"
+- resize in public API? if so would need to take care of the load factor because the user should not know about it.
+
 */
 
 typedef struct {

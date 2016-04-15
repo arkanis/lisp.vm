@@ -1,4 +1,4 @@
-GCC_FLAGS = -std=c99 -Werror -Wall -Wextra -pedantic
+GCC_FLAGS = -std=gnu99 -Werror -Wall -Wextra -pedantic
 GCC_DEBUG_FLAGS = -g
 GCC_OPTIMIZED_FLAGS = -O3
 # Use a simply expanded variable to avoid endless recursion, see
