@@ -48,13 +48,13 @@ void test_eval_rules() {
 		char* out = test_cases[i].out;
 		
 		FILE* in_stream = fmemopen(in, strlen(in), "r");
-			lvm_atom_p ast = lvm_read(lvm, in_stream, stderr);
+			lvm_atom_p ast = lvm_read(lvm, in_stream);
 		fclose(in_stream);
 		
-		result = lvm_eval(lvm, ast, env, stderr);
+		result = lvm_eval(lvm, ast, env);
 		
 		FILE* out_stream = open_memstream(&out_stream_ptr, &out_stream_size);
-			lvm_print(lvm, result, out_stream);
+			lvm_print(lvm, out_stream, result);
 		fclose(out_stream);
 		
 		st_check_str(out_stream_ptr, out);
@@ -64,16 +64,32 @@ void test_eval_rules() {
 		out_stream_size = 0;
 	}
 	
-	// Builtins also eval to themselfs (for now)
-	result = lvm_eval(lvm, builtin_atom, env, stderr);
-	st_check_msg(result == builtin_atom, "builtin doesn't eval to itself");
+	// Symbols without binding eval to an error atom
+	result = lvm_eval(lvm, lvm_sym_atom(lvm, "x"), env);
+	st_check_int(result->type, LVM_T_ERROR);
+	
+	// Builtins eval to an error atom
+	result = lvm_eval(lvm, builtin_atom, env);
+	st_check_int(result->type, LVM_T_ERROR);
 	
 	// Lists eval to calls to builtins
 	size_t old_builtin_call_count = builtin_call_count;
-	lvm_atom_p ast = lvm_pair_atom(lvm, builtin_atom, lvm_pair_atom(lvm, lvm_true_atom(lvm), lvm_nil_atom(lvm)));
-	result = lvm_eval(lvm, ast, env, stderr);
+	lvm_atom_p ast = lvm_pair_atom(lvm, lvm_sym_atom(lvm, "builtin"), lvm_pair_atom(lvm, lvm_true_atom(lvm), lvm_nil_atom(lvm)));
+	result = lvm_eval(lvm, ast, env);
 	st_check_int(builtin_call_count, old_builtin_call_count + 1);
 	st_check_msg(result == lvm_true_atom(lvm), "builtin didn't return the right atom");
+	
+	// If an argument evals to an error atom the function call is stopped and the
+	// result is the error atom. This way the error atoms unwind the stack.
+	char* code = "(builtin (builtin (builtin (builtin x))))";
+	FILE* in_stream = fmemopen(code, strlen(code), "r");
+		ast = lvm_read(lvm, in_stream);
+	fclose(in_stream);
+	
+	old_builtin_call_count = builtin_call_count;
+		result = lvm_eval(lvm, ast, env);
+	st_check_int(result->type, LVM_T_ERROR);
+	st_check_int(builtin_call_count, old_builtin_call_count);
 	
 	lvm_env_destroy(lvm, env);
 	lvm_destroy(lvm);

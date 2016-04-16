@@ -39,14 +39,14 @@ void test_syntax() {
 		char* out = test_cases[i].out;
 		
 		FILE* in_stream = fmemopen(in, strlen(in), "r");
-			lvm_atom_p ast = lvm_read(lvm, in_stream, stderr);
+			lvm_atom_p ast = lvm_read(lvm, in_stream);
 		fclose(in_stream);
 		
 		if (out == NULL) {
 			st_check_null(ast);
 		} else {
 			FILE* out_stream = open_memstream(&out_stream_ptr, &out_stream_size);
-				lvm_print(lvm, ast, out_stream);
+				lvm_print(lvm, out_stream, ast);
 			fclose(out_stream);
 			
 			st_check_str(out_stream_ptr, out);
@@ -67,15 +67,15 @@ void test_symbol_pooling() {
 	char* symbol_str = "some_fancy_symbol_name";
 	
 	in_stream = fmemopen(symbol_str, strlen(symbol_str), "r");
-		lvm_atom_p symbol_atom_1 = lvm_read(lvm, in_stream, stderr);
+		lvm_atom_p symbol_atom_1 = lvm_read(lvm, in_stream);
 	fclose(in_stream);
 	
 	in_stream = fmemopen(symbol_str, strlen(symbol_str), "r");
-		lvm_atom_p symbol_atom_2 = lvm_read(lvm, in_stream, stderr);
+		lvm_atom_p symbol_atom_2 = lvm_read(lvm, in_stream);
 	fclose(in_stream);
 	
 	in_stream = fmemopen(symbol_str, strlen(symbol_str), "r");
-		lvm_atom_p symbol_atom_3 = lvm_read(lvm, in_stream, stderr);
+		lvm_atom_p symbol_atom_3 = lvm_read(lvm, in_stream);
 	fclose(in_stream);
 	
 	st_check(symbol_atom_1 == symbol_atom_2);

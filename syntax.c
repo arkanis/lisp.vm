@@ -14,11 +14,11 @@ _foo_bar → LVM_T_SYM
 
 **/
 
-static lvm_atom_p lvm_read_list(lvm_p lvm, FILE* input, FILE* errors);
+static lvm_atom_p lvm_read_list(lvm_p lvm, FILE* input);
 static int lvm_next_char_after_whitespaces(FILE* input);
 
 
-lvm_atom_p lvm_read(lvm_p lvm, FILE* input, FILE* errors) {
+lvm_atom_p lvm_read(lvm_p lvm, FILE* input) {
 	int c = lvm_next_char_after_whitespaces(input);
 	char* str = NULL;
 	switch(c) {
@@ -29,7 +29,7 @@ lvm_atom_p lvm_read(lvm_p lvm, FILE* input, FILE* errors) {
 				return NULL;
 			return lvm_str_atom(lvm, str);
 		case '(':
-			return lvm_read_list(lvm, input, errors);
+			return lvm_read_list(lvm, input);
 		default:
 			ungetc(c, input);
 			break;
@@ -55,7 +55,7 @@ lvm_atom_p lvm_read(lvm_p lvm, FILE* input, FILE* errors) {
 	return lvm_sym_atom(lvm, str);
 }
 
-static lvm_atom_p lvm_read_list(lvm_p lvm, FILE* input, FILE* errors) {
+static lvm_atom_p lvm_read_list(lvm_p lvm, FILE* input) {
 	int c = lvm_next_char_after_whitespaces(input);
 	switch(c) {
 		case EOF:
@@ -64,8 +64,8 @@ static lvm_atom_p lvm_read_list(lvm_p lvm, FILE* input, FILE* errors) {
 			return lvm_nil_atom(lvm);
 		default:
 			ungetc(c, input);
-			lvm_atom_p first = lvm_read(lvm, input, errors);
-			lvm_atom_p rest = lvm_read_list(lvm, input, errors);
+			lvm_atom_p first = lvm_read(lvm, input);
+			lvm_atom_p rest = lvm_read_list(lvm, input);
 			return lvm_pair_atom(lvm, first, rest);
 	}
 }
@@ -81,7 +81,7 @@ static int lvm_next_char_after_whitespaces(FILE* input) {
 }
 
 
-void lvm_print(lvm_p lvm, lvm_atom_p atom, FILE* output) {
+void lvm_print(lvm_p lvm, FILE* output, lvm_atom_p atom) {
 	switch(atom->type) {
 		case LVM_T_NIL:
 			fprintf(output, "nil");
@@ -104,10 +104,10 @@ void lvm_print(lvm_p lvm, lvm_atom_p atom, FILE* output) {
 		case LVM_T_PAIR:
 			fprintf(output, "(");
 			while(atom->type == LVM_T_PAIR) {
-				lvm_print(lvm, atom->first, output);
+				lvm_print(lvm, output, atom->first);
 				if (atom->rest->type != LVM_T_NIL && atom->rest->type != LVM_T_PAIR) {
 					fprintf(output, " . ");
-					lvm_print(lvm, atom->rest, output);
+					lvm_print(lvm, output, atom->rest);
 				} else if (atom->rest->type == LVM_T_PAIR) {
 					fprintf(output, " ");
 				}
@@ -117,6 +117,9 @@ void lvm_print(lvm_p lvm, lvm_atom_p atom, FILE* output) {
 			break;
 		case LVM_T_BUILTIN:
 			fprintf(output, "builtin(%p)", atom->builtin);
+			break;
+		case LVM_T_ERROR:
+			fprintf(output, "error(%s)\n", atom->str);
 			break;
 	}
 }

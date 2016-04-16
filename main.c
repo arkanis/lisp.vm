@@ -18,11 +18,14 @@ int main() {
 	while (true) {
 		printf("> ");
 		fflush(stdout);
-		lvm_atom_p ast = lvm_read(lvm, stdin, stderr);
+		lvm_atom_p ast = lvm_read(lvm, stdin);
 		if (ast == NULL)  // exit loop if lvm_read() gets an EOF
 			break;
-		lvm_atom_p result = lvm_eval(lvm, ast, local_env, stderr);
-		lvm_print(lvm, result, stdout);
+		lvm_atom_p result = lvm_eval(lvm, ast, local_env);
+		if (result->type != LVM_T_ERROR)
+			lvm_print(lvm, stdout, result);
+		else
+			fprintf(stderr, "%s", result->str);
 		printf("\n");
 	}
 	printf("\n");

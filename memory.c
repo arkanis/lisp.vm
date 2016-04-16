@@ -1,6 +1,7 @@
 // For strdup() in slim_hash.h
 #define _GNU_SOURCE
 #include <string.h>
+#include <stdarg.h>
 #include "common.h"
 
 typedef struct lvm_atom_s lvm_atom_t;
@@ -82,6 +83,16 @@ lvm_atom_p lvm_builtin_atom(lvm_p lvm, lvm_builtin_func_t func) {
 	return lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_BUILTIN, .builtin = func });
 }
 
+lvm_atom_p lvm_error_atom(lvm_p lvm, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+		char* message = NULL;
+		vasprintf(&message, format, args);
+	va_end(args);
+	
+	return lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_ERROR, .str = message });
+}
+
 
 //
 // Environment stuff
@@ -117,8 +128,7 @@ lvm_atom_p lvm_env_get(lvm_p lvm, lvm_env_p env, char* name) {
 		env = env->parent;
 	} while (env != NULL);
 	
-	// TODO: use error atom with binding not found error message
-	return lvm_nil_atom(lvm);
+	return NULL;
 }
 
 

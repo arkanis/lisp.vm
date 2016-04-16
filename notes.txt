@@ -1,7 +1,7 @@
 # ToDo
 
 - implement error atom (evals to itself, if in arg list entire expr evals to error atom)
-- implement arg stack
+- add a test for the builtins
 - implement basic builtins (-, *, /, cons, first, rest)
 
 

@@ -2,11 +2,8 @@
 
 
 static lvm_atom_p lvm_plus(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p env) {
-	if (argc != 2 || argv[0]->type != LVM_T_NUM || argv[1]->type != LVM_T_NUM) {
-		// TODO: use error atom
-		fprintf(stderr, "lvm_plus(): only two num args supported!\n");
-		return lvm_nil_atom(lvm);
-	}
+	if (argc != 2 || argv[0]->type != LVM_T_NUM || argv[1]->type != LVM_T_NUM)
+		return lvm_error_atom(lvm, "lvm_plus(): supports only two number arguments");
 	
 	return lvm_num_atom(lvm, argv[0]->num + argv[1]->num);
 }
