@@ -1,3 +1,10 @@
+# ToDo
+
+- implement error atom (evals to itself, if in arg list entire expr evals to error atom)
+- implement arg stack
+- implement basic builtins (-, *, /, cons, first, rest)
+
+
 # Notes
 
 hash function recommended by Gittinger: fnv1a
@@ -8,6 +15,103 @@ calculate next prime for hash table size:
   this table just has 64 entries filled with pre calculated prime numbers
 
 use eval stack to pass evaled args to builtin functions
+
+
+# Questions
+
+- How to handle environment livetime? The GC knows when an environment is no longer needed
+  so env_destroy() should not be a part of the public API?
+  - But then the application might want to keep it alive as an interface between the script
+    and the program state.
+- What about an error atom to unwind the stack when an error occured. Something like NaN
+  in floating point. Should contain the error message. Might be useful to build something
+  like exception handling.
+
+
+# Structure scratch pad
+
+lvm.h
+	public header file
+	
+	lvm_p (not lvm_t!)
+	lvm functions
+	
+	lvm_atom_type_t
+	lvm_atom_p  (not lvm_atom_t!)	
+	atom alloc functions
+	
+	lvm_env_p (not lvm_env_t!)
+	env functions
+	
+	eval stack functions
+
+common.h
+	lvm_atom_t
+		can reuse lvm_atom_s but might also add more fields
+	lvm_t
+		actual content
+	lvm_hashtab_t
+		for use in lvm_t
+	
+	lvm_env_t
+
+
+lvm.h
+	public API
+common.h
+	private bits of API
+syntax.h
+	reader
+	printer
+eval.h
+	eval
+builtins.h
+	all builtins
+memory.h
+	allocation functions
+main.c
+	test program of public API
+
+
+# User atoms
+
+- Use lower 8 bits of lvm_atom_type_t for normal types.
+- When type set to LVM_T_USER the higher 24 or 16 bit are the index of the user
+  defined atom class (the classes are stored in an interpreter global table).
+- A class defines function pointers for interactions with buildin functions
+  (e.g. when this atom is evaled, ... are there that many?)
+- To create a user defined atom the user first has to register a class. That
+  returns a class id with which the user can create user atoms.
+- The user defined atom itself just contains a void pointer to whatever the user
+  wants to store for that atom.
+- Similar to resource objects in PHP? E.g. for stream I/O?
+
+
+# Customizable syntax
+
+Pass reader and printer functions in lvm_new() options struct. Then the user can
+supply a different parser and printer.
+
+
+# Structure ideas for a bytecode compiler and interpreter API
+
+interpreter
+	new(...)  // probably an options struct with stack size, heap size, etc.
+	destroy()
+	
+	run(module)
+
+compiler
+	new(...)
+	destroy()
+	
+	compile(source_code, existing_module) → module
+
+module
+	new(...)
+	
+	save(filename)
+	load(filename)
 
 
 # Syntax ideas

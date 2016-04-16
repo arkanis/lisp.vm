@@ -5,7 +5,7 @@
 #define SLIM_TEST_IMPLEMENTATION
 #include "slim_test.h"
 
-#include "syntax.h"
+#include "../lvm.h"
 
 
 void test_syntax() {
@@ -32,25 +32,28 @@ void test_syntax() {
 	
 	char* out_stream_ptr = NULL;
 	size_t out_stream_size = 0;
+	lvm_p lvm = lvm_new();
 	
 	for(size_t i = 0; i < (sizeof(test_cases) / sizeof(test_cases[0])); i++) {
 		char* in = test_cases[i].in;
 		char* out = test_cases[i].out;
 		
 		FILE* in_stream = fmemopen(in, strlen(in), "r");
-			lvm_atom_p ast = lvm_read(in_stream, stderr);
+			lvm_atom_p ast = lvm_read(lvm, in_stream, stderr);
 		fclose(in_stream);
 		
 		if (out == NULL) {
 			st_check_null(ast);
 		} else {
 			FILE* out_stream = open_memstream(&out_stream_ptr, &out_stream_size);
-				lvm_print(ast, out_stream);
+				lvm_print(lvm, ast, out_stream);
 			fclose(out_stream);
 			
 			st_check_str(out_stream_ptr, out);
 		}
 	}
+	
+	lvm_destroy(lvm);
 }
 
 int main() {

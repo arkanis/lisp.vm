@@ -1,8 +1,6 @@
-#include <ctype.h>
 #include <string.h>
-
-#include "syntax.h"
-
+#include <ctype.h>
+#include "common.h"
 
 /** simple LISP syntax
 
@@ -16,20 +14,12 @@ _foo_bar → LVM_T_SYM
 
 **/
 
-static lvm_atom_p lvm_read_list(FILE* input, FILE* errors, lvm_p lvm);
+static lvm_atom_p read_list(lvm_p lvm, FILE* input, FILE* errors);
+static int next_char_after_whitespaces(FILE* input);
 
-static int lvm_next_char_after_whitespaces(FILE* input) {
-	int c;
-	
-	do {
-		c = fgetc(input);
-	} while ( isspace(c) );
-	
-	return c;
-}
 
-lvm_atom_p lvm_read(FILE* input, FILE* errors, lvm_p lvm) {
-	int c = lvm_next_char_after_whitespaces(input);
+lvm_atom_p lvm_read(lvm_p lvm, FILE* input, FILE* errors) {
+	int c = next_char_after_whitespaces(input);
 	char* str = NULL;
 	switch(c) {
 		case EOF:
@@ -37,9 +27,9 @@ lvm_atom_p lvm_read(FILE* input, FILE* errors, lvm_p lvm) {
 		case '"':
 			if ( fscanf(input, "%m[^\"]\"", &str) != 1 )
 				return NULL;
-			return lvm_str_atom(str);
+			return lvm_str_atom(lvm, str);
 		case '(':
-			return lvm_read_list(input, errors, lvm);
+			return read_list(lvm, input, errors);
 		default:
 			ungetc(c, input);
 			break;
@@ -49,7 +39,7 @@ lvm_atom_p lvm_read(FILE* input, FILE* errors, lvm_p lvm) {
 		int64_t num = 0;
 		if ( fscanf(input, "%lu", (uint64_t*)&num) != 1 )
 			return NULL;
-		return lvm_num_atom(num);
+		return lvm_num_atom(lvm, num);
 	}
 	
 	// We got either a keyword or a symbol
@@ -57,38 +47,41 @@ lvm_atom_p lvm_read(FILE* input, FILE* errors, lvm_p lvm) {
 		return NULL;
 	
 	if (strcmp(str, "nil") == 0)
-		return lvm_nil_atom();
+		return lvm_nil_atom(lvm);
 	else if (strcmp(str, "true") == 0)
-		return lvm_true_atom();
+		return lvm_true_atom(lvm);
 	else if (strcmp(str, "false") == 0)
-		return lvm_false_atom();
-	
-	
-	lvm_atom_p existing_symbol = symtab_get(&lvm->symbols, str, NULL);
-	if (existing_symbol)
-		return existing_symbol;
-	
-	lvm_atom_p symbol = lvm_sym_atom(str);
-	symtab_put(&lvm->symbols, str, symbol);
-	return symbol;
+		return lvm_false_atom(lvm);
+	return lvm_sym_atom(lvm, str);
 }
 
-static lvm_atom_p lvm_read_list(FILE* input, FILE* errors, lvm_p lvm) {
-	int c = lvm_next_char_after_whitespaces(input);
+static lvm_atom_p read_list(lvm_p lvm, FILE* input, FILE* errors) {
+	int c = next_char_after_whitespaces(input);
 	switch(c) {
 		case EOF:
 			return NULL;
 		case ')':
-			return lvm_nil_atom();
+			return lvm_nil_atom(lvm);
 		default:
 			ungetc(c, input);
-			lvm_atom_p first = lvm_read(input, errors, lvm);
-			lvm_atom_p rest = lvm_read_list(input, errors, lvm);
-			return lvm_pair_atom(first, rest);
+			lvm_atom_p first = lvm_read(lvm, input, errors);
+			lvm_atom_p rest = read_list(lvm, input, errors);
+			return lvm_pair_atom(lvm, first, rest);
 	}
 }
 
-void lvm_print(lvm_atom_p atom, FILE* output) {
+static int next_char_after_whitespaces(FILE* input) {
+	int c;
+	
+	do {
+		c = fgetc(input);
+	} while ( isspace(c) );
+	
+	return c;
+}
+
+
+void lvm_print(lvm_p lvm, lvm_atom_p atom, FILE* output) {
 	switch(atom->type) {
 		case LVM_T_NIL:
 			fprintf(output, "nil");
@@ -111,10 +104,10 @@ void lvm_print(lvm_atom_p atom, FILE* output) {
 		case LVM_T_PAIR:
 			fprintf(output, "(");
 			while(atom->type == LVM_T_PAIR) {
-				lvm_print(atom->first, output);
+				lvm_print(lvm, atom->first, output);
 				if (atom->rest->type != LVM_T_NIL && atom->rest->type != LVM_T_PAIR) {
 					fprintf(output, " . ");
-					lvm_print(atom->rest, output);
+					lvm_print(lvm, atom->rest, output);
 				} else if (atom->rest->type == LVM_T_PAIR) {
 					fprintf(output, " ");
 				}
@@ -124,9 +117,6 @@ void lvm_print(lvm_atom_p atom, FILE* output) {
 			break;
 		case LVM_T_BUILTIN:
 			fprintf(output, "builtin(%p)", atom->builtin);
-			break;
-		default:
-			fprintf(output, "unknown_atom#%d", atom->type);
 			break;
 	}
 }
