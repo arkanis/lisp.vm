@@ -50,13 +50,43 @@ void test_syntax() {
 			fclose(out_stream);
 			
 			st_check_str(out_stream_ptr, out);
+			
+			free(out_stream_ptr);
+			out_stream_ptr = NULL;
+			out_stream_size = 0;
 		}
 	}
 	
 	lvm_destroy(lvm);
 }
 
+void test_symbol_pooling() {
+	lvm_p lvm = lvm_new();
+	
+	FILE* in_stream = NULL;
+	char* symbol_str = "some_fancy_symbol_name";
+	
+	in_stream = fmemopen(symbol_str, strlen(symbol_str), "r");
+		lvm_atom_p symbol_atom_1 = lvm_read(lvm, in_stream, stderr);
+	fclose(in_stream);
+	
+	in_stream = fmemopen(symbol_str, strlen(symbol_str), "r");
+		lvm_atom_p symbol_atom_2 = lvm_read(lvm, in_stream, stderr);
+	fclose(in_stream);
+	
+	in_stream = fmemopen(symbol_str, strlen(symbol_str), "r");
+		lvm_atom_p symbol_atom_3 = lvm_read(lvm, in_stream, stderr);
+	fclose(in_stream);
+	
+	st_check(symbol_atom_1 == symbol_atom_2);
+	st_check(symbol_atom_2 == symbol_atom_3);
+	
+	lvm_destroy(lvm);
+}
+
+
 int main() {
 	st_run(test_syntax);
+	st_run(test_symbol_pooling);
 	return st_show_report();
 }
