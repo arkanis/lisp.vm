@@ -5,16 +5,16 @@ lvm_p lvm_new() {
 	if (lvm == NULL)
 		return NULL;
 	
-	lvm_dict_new(&lvm->symbol_table);
-	lvm_init_base_atoms(lvm);
+	lvm_mem_init(lvm);
 	lvm->base_env = lvm_new_base_env(lvm);
-	lvm->alloced_atoms = 0;
 	
 	return lvm;
 }
 
 void lvm_destroy(lvm_p lvm) {
-	lvm_dict_destroy(&lvm->symbol_table);
+	lvm_env_destroy(lvm, lvm->base_env);
+	lvm->base_env = NULL;
+	lvm_mem_free(lvm);
 	free(lvm);
 }
 

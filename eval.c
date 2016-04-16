@@ -10,6 +10,7 @@ lvm_atom_p lvm_eval(lvm_p lvm, lvm_atom_p atom, lvm_env_p env, FILE* errors) {
 		case LVM_T_FALSE:
 		case LVM_T_NUM:
 		case LVM_T_STR:
+		// TODO: eval builtins int an error atom
 		case LVM_T_BUILTIN:
 			return atom;
 		case LVM_T_SYM:
@@ -32,5 +33,15 @@ static lvm_atom_p lvm_eval_pair(lvm_p lvm, lvm_atom_p atom, lvm_env_p env, FILE*
 		return lvm_nil_atom(lvm);
 	}
 	
-	return func->builtin(lvm, atom->rest, env);
+	// Eval all arguments and push them on the arg stack
+	size_t prev_length = lvm->arg_stack_length;
+	for(lvm_atom_p arg = atom->rest; arg->type == LVM_T_PAIR; arg = arg->rest)
+		lvm_arg_stack_push(lvm, lvm_eval(lvm, arg->first, env, errors));
+	size_t arg_count = lvm->arg_stack_length - prev_length;
+	
+	// Call builtin and drop arguments from the arg stack
+	lvm_atom_p result = func->builtin(lvm, arg_count, lvm->arg_stack_ptr + prev_length, env);
+	lvm_arg_stack_drop(lvm, arg_count);
+	
+	return result;
 }

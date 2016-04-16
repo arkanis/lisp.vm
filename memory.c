@@ -12,10 +12,22 @@ static lvm_atom_p lvm_alloc_atom(lvm_p lvm, lvm_atom_t content);
 // Init stuff
 //
 
-void lvm_init_base_atoms(lvm_p lvm) {
+void lvm_mem_init(lvm_p lvm) {
+	lvm_dict_new(&lvm->symbol_table);
+	
 	lvm->nil_atom   = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_NIL   });
 	lvm->true_atom  = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_TRUE  });
 	lvm->false_atom = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_FALSE });
+	
+	lvm->arg_stack_length = 0;
+	lvm->arg_stack_capacity = 16;
+	lvm->arg_stack_ptr = malloc(lvm->arg_stack_capacity * sizeof(lvm->arg_stack_ptr[0]));
+	
+	lvm->alloced_atoms = 0;
+}
+
+void lvm_mem_free(lvm_p lvm) {
+	free(lvm->arg_stack_ptr);
 }
 
 
@@ -107,4 +119,28 @@ lvm_atom_p lvm_env_get(lvm_p lvm, lvm_env_p env, char* name) {
 	
 	// TODO: use error atom with binding not found error message
 	return lvm_nil_atom(lvm);
+}
+
+
+//
+// Eval argument stack stuff
+//
+
+
+void lvm_arg_stack_push(lvm_p lvm, lvm_atom_p atom) {
+	if (lvm->arg_stack_length >= lvm->arg_stack_capacity) {
+		lvm->arg_stack_capacity *= 2;
+		lvm->arg_stack_ptr = realloc(lvm->arg_stack_ptr, lvm->arg_stack_capacity * sizeof(lvm->arg_stack_ptr[0]));
+	}
+	
+	lvm->arg_stack_ptr[lvm->arg_stack_length++] = atom;
+}
+
+void lvm_arg_stack_drop(lvm_p lvm, size_t count) {
+	if (count > lvm->arg_stack_length) {
+		fprintf(stderr, "trying to drop more atoms from the arg stack than there are! eval might be broken!\n");
+		abort();
+	}
+	
+	lvm->arg_stack_length -= count;
 }

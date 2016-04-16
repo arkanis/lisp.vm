@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include "lvm.h"
 
-lvm_atom_p print(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
-	printf("Hello from main :)\nargs: %p, env: %p\n", args, env);
+lvm_atom_p print(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p env) {
+	printf("Hello from main :)\n");
 	return lvm_nil_atom(lvm);
 }
 

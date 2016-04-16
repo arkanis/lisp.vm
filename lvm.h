@@ -36,7 +36,7 @@ typedef enum {
 	LVM_T_BUILTIN
 } lvm_atom_type_t;
 
-typedef lvm_atom_p (*lvm_builtin_func_t)(lvm_p lvm, lvm_atom_p args, lvm_env_p env);
+typedef lvm_atom_p (*lvm_builtin_func_t)(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p env);
 
 struct lvm_atom_s {
 	lvm_atom_type_t type;

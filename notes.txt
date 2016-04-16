@@ -28,6 +28,12 @@ use eval stack to pass evaled args to builtin functions
   like exception handling.
 
 
+# Ideas for some confort functions
+
+- lvm_print_atom_str(lvm, atom) → malloced string
+- lvm_read_str(lvm, str) → atom
+
+
 # Structure scratch pad
 
 lvm.h
