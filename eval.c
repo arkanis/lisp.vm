@@ -1,6 +1,6 @@
 #include "common.h"
 
-static lvm_atom_p eval_pair(lvm_p lvm, lvm_atom_p atom, lvm_env_p env, FILE* errors);
+static lvm_atom_p lvm_eval_pair(lvm_p lvm, lvm_atom_p atom, lvm_env_p env, FILE* errors);
 
 
 lvm_atom_p lvm_eval(lvm_p lvm, lvm_atom_p atom, lvm_env_p env, FILE* errors) {
@@ -15,13 +15,13 @@ lvm_atom_p lvm_eval(lvm_p lvm, lvm_atom_p atom, lvm_env_p env, FILE* errors) {
 		case LVM_T_SYM:
 			return lvm_env_get(lvm, env, atom->str);
 		case LVM_T_PAIR:
-			return eval_pair(lvm, atom, env, errors);
+			return lvm_eval_pair(lvm, atom, env, errors);
 	}
 	
 	return NULL;
 }
 
-static lvm_atom_p eval_pair(lvm_p lvm, lvm_atom_p atom, lvm_env_p env, FILE* errors) {
+static lvm_atom_p lvm_eval_pair(lvm_p lvm, lvm_atom_p atom, lvm_env_p env, FILE* errors) {
 	// Eval first element of the list
 	lvm_atom_p func = lvm_eval(lvm, atom->first, env, errors);
 	if (func->type != LVM_T_BUILTIN) {

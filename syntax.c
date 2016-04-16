@@ -14,12 +14,12 @@ _foo_bar → LVM_T_SYM
 
 **/
 
-static lvm_atom_p read_list(lvm_p lvm, FILE* input, FILE* errors);
-static int next_char_after_whitespaces(FILE* input);
+static lvm_atom_p lvm_read_list(lvm_p lvm, FILE* input, FILE* errors);
+static int lvm_next_char_after_whitespaces(FILE* input);
 
 
 lvm_atom_p lvm_read(lvm_p lvm, FILE* input, FILE* errors) {
-	int c = next_char_after_whitespaces(input);
+	int c = lvm_next_char_after_whitespaces(input);
 	char* str = NULL;
 	switch(c) {
 		case EOF:
@@ -29,7 +29,7 @@ lvm_atom_p lvm_read(lvm_p lvm, FILE* input, FILE* errors) {
 				return NULL;
 			return lvm_str_atom(lvm, str);
 		case '(':
-			return read_list(lvm, input, errors);
+			return lvm_read_list(lvm, input, errors);
 		default:
 			ungetc(c, input);
 			break;
@@ -55,8 +55,8 @@ lvm_atom_p lvm_read(lvm_p lvm, FILE* input, FILE* errors) {
 	return lvm_sym_atom(lvm, str);
 }
 
-static lvm_atom_p read_list(lvm_p lvm, FILE* input, FILE* errors) {
-	int c = next_char_after_whitespaces(input);
+static lvm_atom_p lvm_read_list(lvm_p lvm, FILE* input, FILE* errors) {
+	int c = lvm_next_char_after_whitespaces(input);
 	switch(c) {
 		case EOF:
 			return NULL;
@@ -65,12 +65,12 @@ static lvm_atom_p read_list(lvm_p lvm, FILE* input, FILE* errors) {
 		default:
 			ungetc(c, input);
 			lvm_atom_p first = lvm_read(lvm, input, errors);
-			lvm_atom_p rest = read_list(lvm, input, errors);
+			lvm_atom_p rest = lvm_read_list(lvm, input, errors);
 			return lvm_pair_atom(lvm, first, rest);
 	}
 }
 
-static int next_char_after_whitespaces(FILE* input) {
+static int lvm_next_char_after_whitespaces(FILE* input) {
 	int c;
 	
 	do {

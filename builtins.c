@@ -1,7 +1,7 @@
 #include "common.h"
 
 
-static lvm_atom_p plus(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
+static lvm_atom_p lvm_plus(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
 	if ( !(args->type == LVM_T_PAIR && args->rest->type == LVM_T_PAIR) ) {
 		// TODO: use error atom
 		fprintf(stderr, "lvm_plus(): first two args need to be pairs!\n");
@@ -23,7 +23,7 @@ static lvm_atom_p plus(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
 lvm_env_p lvm_new_base_env(lvm_p lvm) {
 	lvm_env_p env = lvm_env_new(lvm, NULL);
 	
-	lvm_env_put(lvm, env, "+", lvm_builtin_atom(lvm, plus));
+	lvm_env_put(lvm, env, "+", lvm_builtin_atom(lvm, lvm_plus));
 	
 	return env;
 }

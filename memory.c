@@ -5,7 +5,7 @@
 
 typedef struct lvm_atom_s lvm_atom_t;
 
-static lvm_atom_p alloc_atom(lvm_p lvm, lvm_atom_t content);
+static lvm_atom_p lvm_alloc_atom(lvm_p lvm, lvm_atom_t content);
 
 
 //
@@ -13,9 +13,9 @@ static lvm_atom_p alloc_atom(lvm_p lvm, lvm_atom_t content);
 //
 
 void lvm_init_base_atoms(lvm_p lvm) {
-	lvm->nil_atom   = alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_NIL   });
-	lvm->true_atom  = alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_TRUE  });
-	lvm->false_atom = alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_FALSE });
+	lvm->nil_atom   = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_NIL   });
+	lvm->true_atom  = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_TRUE  });
+	lvm->false_atom = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_FALSE });
 }
 
 
@@ -23,7 +23,7 @@ void lvm_init_base_atoms(lvm_p lvm) {
 // Atom memory management
 //
 
-static lvm_atom_p alloc_atom(lvm_p lvm, lvm_atom_t content) {
+static lvm_atom_p lvm_alloc_atom(lvm_p lvm, lvm_atom_t content) {
 	lvm_atom_p atom = malloc(sizeof(lvm_atom_t));
 	*atom = content;
 	lvm->alloced_atoms++;
@@ -43,31 +43,31 @@ lvm_atom_p lvm_false_atom(lvm_p lvm) {
 }
 
 lvm_atom_p lvm_num_atom(lvm_p lvm, int64_t value) {
-	return alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_NUM, .num = value });
+	return lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_NUM, .num = value });
 }
 
 lvm_atom_p lvm_sym_atom(lvm_p lvm, char* value) {
 	lvm_atom_p symbol = lvm_dict_get(&lvm->symbol_table, value, NULL);
 	if (!symbol) {
-		symbol = alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_SYM, .str = value });
+		symbol = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_SYM, .str = value });
 		lvm_dict_put(&lvm->symbol_table, value, symbol);
 	}
 	return symbol;
 }
 
 lvm_atom_p lvm_str_atom(lvm_p lvm, char* value) {
-	return alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_STR, .str = value });
+	return lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_STR, .str = value });
 }
 
 lvm_atom_p lvm_pair_atom(lvm_p lvm, lvm_atom_p first, lvm_atom_p rest) {
 	lvm_atom_t pair = { .type = LVM_T_PAIR };
 	pair.first = first;
 	pair.rest = rest;
-	return alloc_atom(lvm, pair);
+	return lvm_alloc_atom(lvm, pair);
 }
 
 lvm_atom_p lvm_builtin_atom(lvm_p lvm, lvm_builtin_func_t func) {
-	return alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_BUILTIN, .builtin = func });
+	return lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_BUILTIN, .builtin = func });
 }
 
 
