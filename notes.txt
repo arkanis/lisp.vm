@@ -1,0 +1,64 @@
+# Notes
+
+hash function recommended by Gittinger: fnv1a
+
+calculate next prime for hash table size:
+- calculate highest set bit of hash table length (count leading zeros)
+- create a fixed table that maps the number of the highest set bit to a fixed prime number
+  this table just has 64 entries filled with pre calculated prime numbers
+
+use eval stack to pass evaled args to builtin functions
+
+
+# Syntax ideas
+
+3141 → LVM_T_NUM
+"foo bar" → LVM_T_STR
+(a b c) → LVM_T_PAIR
+nil → LVM_T_NIL
+true → LVM_T_TRUE
+false → LVM_T_FALSE
+_foo_bar → LVM_T_SYM
+
+(define foo 123)
+(set! foo 124)
+(if cond t_case f_case)
+(quote expr)
+(begin expr...)
+(lambda (args) body...)
+
+(cons a b)
+(first pair)
+(rest rest)
+
+(+ a b)
+(- a b)
+(* a b)
+(/ a b)
+(= a b)
+
+(print expr)
+
+------------------------------------------------------------------
+
+3141 → LVM_T_NUM
+"foo bar" → LVM_T_STR
+[a b c] → LVM_T_PAIR
+nil → LVM_T_NIL
+true → LVM_T_TRUE
+false → LVM_T_FALSE
+_foo_bar → LVM_T_SYM
+
+define: foo = 123
+set!:   foo = 124
+if:     if expr expr else expr
+quote:  [expr...]
+begin:  ...
+lambda: function(args) { body ... }
+
+cons(a, b)
+first(pair)
+rest(pair)
+
+a + b    a op b    op = + - * / ==
+print(expr)
