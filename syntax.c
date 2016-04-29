@@ -118,6 +118,16 @@ void lvm_print(lvm_p lvm, FILE* output, lvm_atom_p atom) {
 		case LVM_T_BUILTIN:
 			fprintf(output, "builtin(%p)", atom->builtin);
 			break;
+		case LVM_T_SYNTAX:
+			fprintf(output, "syntax(%p)", atom->builtin);
+			break;
+		case LVM_T_LAMBDA:
+			fprintf(output, "(lambda ");
+			lvm_print(lvm, output, atom->args);
+			fprintf(output, " ");
+			lvm_print(lvm, output, atom->body);
+			fprintf(output, ")");
+			break;
 		case LVM_T_ERROR:
 			fprintf(output, "error(%s)\n", atom->str);
 			break;

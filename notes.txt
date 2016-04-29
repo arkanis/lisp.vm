@@ -1,7 +1,8 @@
 # ToDo
 
-- add tests for the builtins
-- implement basic builtins (-, *, /, cons, first, rest)
+- cleanup syntax arguments or checks (is it worth it?)
+- add tests for error cases (just check if error atom is returned)
+- write tests for lambdas
 
 
 # Notes
@@ -13,12 +14,10 @@ calculate next prime for hash table size:
 - create a fixed table that maps the number of the highest set bit to a fixed prime number
   this table just has 64 entries filled with pre calculated prime numbers
 
-use eval stack to pass evaled args to builtin functions
-
 
 # Questions
 
-- How to handle environment livetime? The GC knows when an environment is no longer needed
+- How to handle environment lifetime? The GC knows when an environment is no longer needed
   so env_destroy() should not be a part of the public API?
   - But then the application might want to keep it alive as an interface between the script
     and the program state.

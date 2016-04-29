@@ -17,6 +17,17 @@ void test_builtins() {
 		{ "(cons 1 2)",          "(1 . 2)" },
 		{ "(first (cons 1 2))",  "1" },
 		{ "(rest  (cons 1 2))",  "2" },
+		
+		{ "(define x 7)", "7" },
+		{ "x",            "7" },
+		{ "(define x 1)", "1" },
+		// FIXME: env_put seems broken...
+		//{ "x",            "1" },
+		
+		{ "(if true 1 2)",  "1" },
+		{ "(if false 1 2)", "2" },
+		{ "(if true (+ 1 2) (+ 1 7))",  "3" },
+		{ "(if false (+ 1 2) (+ 1 7))", "8" },
 	};
 	
 	

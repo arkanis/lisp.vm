@@ -79,8 +79,19 @@ lvm_atom_p lvm_pair_atom(lvm_p lvm, lvm_atom_p first, lvm_atom_p rest) {
 	return lvm_alloc_atom(lvm, pair);
 }
 
+lvm_atom_p lvm_lambda_atom(lvm_p lvm, lvm_atom_p args, lvm_atom_p body) {
+	lvm_atom_t lambda = { .type = LVM_T_LAMBDA };
+	lambda.args = args;
+	lambda.body = body;
+	return lvm_alloc_atom(lvm, lambda);
+}
+
 lvm_atom_p lvm_builtin_atom(lvm_p lvm, lvm_builtin_func_t func) {
 	return lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_BUILTIN, .builtin = func });
+}
+
+lvm_atom_p lvm_syntax_atom(lvm_p lvm, lvm_syntax_func_t func) {
+	return lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_SYNTAX, .syntax = func });
 }
 
 lvm_atom_p lvm_error_atom(lvm_p lvm, const char* format, ...) {

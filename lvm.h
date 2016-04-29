@@ -33,11 +33,14 @@ typedef enum {
 	LVM_T_SYM,
 	LVM_T_STR,
 	LVM_T_PAIR,
+	LVM_T_LAMBDA,
 	LVM_T_BUILTIN,
+	LVM_T_SYNTAX,
 	LVM_T_ERROR
 } lvm_atom_type_t;
 
 typedef lvm_atom_p (*lvm_builtin_func_t)(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p env);
+typedef lvm_atom_p (*lvm_syntax_func_t)(lvm_p lvm, lvm_atom_p args, lvm_env_p env);
 
 struct lvm_atom_s {
 	lvm_atom_type_t type;
@@ -49,6 +52,11 @@ struct lvm_atom_s {
 			lvm_atom_p rest;
 		};
 		lvm_builtin_func_t builtin;
+		lvm_syntax_func_t syntax;
+		struct {
+			lvm_atom_p args;
+			lvm_atom_p body;
+		};
 	};
 };
 
@@ -59,7 +67,9 @@ lvm_atom_p lvm_num_atom(lvm_p lvm, int64_t value);
 lvm_atom_p lvm_sym_atom(lvm_p lvm, char* value);
 lvm_atom_p lvm_str_atom(lvm_p lvm, char* value);
 lvm_atom_p lvm_pair_atom(lvm_p lvm, lvm_atom_p first, lvm_atom_p rest);
+lvm_atom_p lvm_lambda_atom(lvm_p lvm, lvm_atom_p args, lvm_atom_p body);
 lvm_atom_p lvm_builtin_atom(lvm_p lvm, lvm_builtin_func_t func);
+lvm_atom_p lvm_syntax_atom(lvm_p lvm, lvm_syntax_func_t func);
 lvm_atom_p lvm_error_atom(lvm_p lvm, const char* format, ...);
 
 
