@@ -1,7 +1,6 @@
 # ToDo
 
-- implement error atom (evals to itself, if in arg list entire expr evals to error atom)
-- add a test for the builtins
+- add tests for the builtins
 - implement basic builtins (-, *, /, cons, first, rest)
 
 
@@ -26,6 +25,8 @@ use eval stack to pass evaled args to builtin functions
 - What about an error atom to unwind the stack when an error occured. Something like NaN
   in floating point. Should contain the error message. Might be useful to build something
   like exception handling.
+- Why PUSH and POP argument stack?
+  Just pop it automatically when the function call is done.
 
 
 # Ideas for some confort functions
