@@ -19,7 +19,7 @@ lvm_atom_p lvm_eval(lvm_p lvm, lvm_atom_p atom, lvm_env_p env) {
 		case LVM_T_PAIR:
 			return lvm_eval_pair(lvm, atom, env);
 		case LVM_T_LAMBDA:
-			break;
+			return lvm_error_atom(lvm, "lvm_eval(): can't eval lambda!");
 		case LVM_T_BUILTIN:
 			return lvm_error_atom(lvm, "lvm_eval(): can't eval builtin!");
 		case LVM_T_SYNTAX:
