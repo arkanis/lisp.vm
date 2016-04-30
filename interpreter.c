@@ -1,4 +1,4 @@
-#include "common.h"
+#include "internals.h"
 
 lvm_p lvm_new() {
 	lvm_p lvm = malloc(sizeof(lvm_t));

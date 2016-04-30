@@ -2,7 +2,7 @@
 #define _GNU_SOURCE
 #include <string.h>
 #include <stdarg.h>
-#include "common.h"
+#include "internals.h"
 
 typedef struct lvm_atom_s lvm_atom_t;
 

@@ -1,4 +1,4 @@
-#include "common.h"
+#include "internals.h"
 
 
 static lvm_atom_p lvm_add(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p env) {

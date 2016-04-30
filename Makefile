@@ -12,7 +12,7 @@ OBJS = interpreter.o memory.o syntax.o eval.o builtins.o
 
 # These are the two central header files (public and private structures and
 # functions). When they change we have to rebuild everything.
-$(OBJS): lvm.h common.h
+$(OBJS): lvm.h internals.h
 
 
 # Actual programs, object files are build by implicit rules

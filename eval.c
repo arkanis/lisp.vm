@@ -1,4 +1,4 @@
-#include "common.h"
+#include "internals.h"
 
 static lvm_atom_p lvm_eval_pair(lvm_p lvm, lvm_atom_p atom, lvm_env_p env);
 

@@ -1,6 +1,6 @@
 #include <string.h>
 #include <ctype.h>
-#include "common.h"
+#include "internals.h"
 
 /** simple LISP syntax
 
