@@ -1,7 +1,5 @@
 # ToDo
 
-- make = builtin do sane things for all atom types
-
 
 # Notes
 

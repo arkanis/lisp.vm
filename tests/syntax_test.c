@@ -27,7 +27,10 @@ void test_syntax() {
 		{ "  nil", "nil" },
 		{ "  true", "true" },
 		{ "  false", "false" },
-		{ "  (  )  ", "nil" }
+		{ "  (  )  ", "nil" },
+		
+		{ "'foo",     "(quote foo)" },
+		{ "'(+ a b)", "(quote (+ a b))" },
 	};
 	
 	char* out_stream_ptr = NULL;

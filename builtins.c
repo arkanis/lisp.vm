@@ -60,6 +60,18 @@ static lvm_atom_p lvm_eq(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p en
 		return (a->num == b->num) ? lvm_true_atom(lvm) : lvm_false_atom(lvm);
 	} else if (a->type == LVM_T_STR && b->type == LVM_T_STR) {
 		return strcmp(a->str, b->str) == 0 ? lvm_true_atom(lvm) : lvm_false_atom(lvm);
+	} else if (a->type == LVM_T_PAIR && b->type == LVM_T_PAIR) {
+		lvm_arg_stack_push(lvm, a->first);
+		lvm_arg_stack_push(lvm, b->first);
+		bool first_equal = lvm_eq(lvm, 2, lvm->arg_stack_ptr + lvm->arg_stack_length - 2, env)->type == LVM_T_TRUE;
+		lvm_arg_stack_drop(lvm, 2);
+		
+		lvm_arg_stack_push(lvm, a->rest);
+		lvm_arg_stack_push(lvm, b->rest);
+		bool rest_equal = lvm_eq(lvm, 2, lvm->arg_stack_ptr + lvm->arg_stack_length - 2, env)->type == LVM_T_TRUE;
+		lvm_arg_stack_drop(lvm, 2);
+		
+		return (first_equal && rest_equal) ? lvm_true_atom(lvm) : lvm_false_atom(lvm);
 	}
 	return lvm_false_atom(lvm);
 }
@@ -126,6 +138,12 @@ static lvm_atom_p lvm_lambda(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
 	return lvm_lambda_atom(lvm, args->first, args->rest);
 }
 
+static lvm_atom_p lvm_quote(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
+	if ( !lvm_verify_syn_arg_count(args, 1, false) )
+		return lvm_error_atom(lvm, "lvm_quote(): supports only one arg");
+	return args->first;
+}
+
 
 lvm_env_p lvm_new_base_env(lvm_p lvm) {
 	lvm_env_p env = lvm_env_new(lvm, NULL);
@@ -146,6 +164,7 @@ lvm_env_p lvm_new_base_env(lvm_p lvm) {
 	lvm_env_put(lvm, env, "define", lvm_syntax_atom(lvm, lvm_define));
 	lvm_env_put(lvm, env, "if",     lvm_syntax_atom(lvm, lvm_if));
 	lvm_env_put(lvm, env, "lambda", lvm_syntax_atom(lvm, lvm_lambda));
+	lvm_env_put(lvm, env, "quote",  lvm_syntax_atom(lvm, lvm_quote));
 	
 	return env;
 }

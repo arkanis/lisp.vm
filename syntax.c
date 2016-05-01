@@ -30,6 +30,14 @@ lvm_atom_p lvm_read(lvm_p lvm, FILE* input) {
 			return lvm_str_atom(lvm, str);
 		case '(':
 			return lvm_read_list(lvm, input);
+		case '\'':
+			return lvm_pair_atom(lvm,
+				lvm_sym_atom(lvm, "quote"),
+				lvm_pair_atom(lvm,
+					lvm_read(lvm, input),
+					lvm_nil_atom(lvm)
+				)
+			);
 		default:
 			ungetc(c, input);
 			break;

@@ -18,6 +18,11 @@ void test_builtins() {
 		{ "(first (cons 1 2))",  "1" },
 		{ "(rest  (cons 1 2))",  "2" },
 		
+		{ "(quote 1)",        "1" },
+		{ "(quote sym)",      "sym" },
+		{ "(quote \"foo\")",  "\"foo\"" },
+		{ "(quote (+ 1 2))",  "(+ 1 2)" },
+		
 		{ "(= 1 1)", "true" },
 		{ "(= 2 1)", "false" },
 		{ "(= true true)",   "true" },
@@ -25,6 +30,11 @@ void test_builtins() {
 		{ "(= false false)", "true" },
 		{ "(= \"foo\" \"foo\")", "true" },
 		{ "(= \"foo\" \"bar\")", "false" },
+		
+		{ "(= (quote (1 2)) (quote (1 2)))",         "true" },
+		{ "(= (quote (1 2)) (quote (1 1)))",         "false" },
+		{ "(= (quote (1 2)) (quote 1))",             "false" },
+		{ "(= (quote (1 (2 3))) (quote (1 (2 1))))", "false" },
 		
 		{ "(< 1 2)", "true" },
 		{ "(< 2 1)", "false" },
