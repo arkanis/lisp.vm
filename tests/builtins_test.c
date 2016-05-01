@@ -18,9 +18,28 @@ void test_builtins() {
 		{ "(first (cons 1 2))",  "1" },
 		{ "(rest  (cons 1 2))",  "2" },
 		
+		{ "(= 1 1)", "true" },
+		{ "(= 2 1)", "false" },
+		{ "(= true true)",   "true" },
+		{ "(= false true)",  "false" },
+		{ "(= false false)", "true" },
+		{ "(= \"foo\" \"foo\")", "true" },
+		{ "(= \"foo\" \"bar\")", "false" },
+		
+		{ "(< 1 2)", "true" },
+		{ "(< 2 1)", "false" },
+		{ "(< 1 1)", "false" },
+		{ "(> 1 2)", "false" },
+		{ "(> 2 1)", "true" },
+		{ "(> 1 1)", "false" },
+		
 		{ "(define x 7)", "7" },
 		{ "x",            "7" },
 		{ "(define x 1)", "1" },
+		{ "x",            "1" },
+		
+		// Make sure error atoms are not assigned as values
+		{ "(define x y)", NULL },
 		{ "x",            "1" },
 		
 		{ "(if true 1 2)",  "1" },
@@ -28,7 +47,19 @@ void test_builtins() {
 		{ "(if true (+ 1 2) (+ 1 7))",  "3" },
 		{ "(if false (+ 1 2) (+ 1 7))", "8" },
 		
+		// Basic lambda definition and calling
+		{ "(lambda (a b) (+ a b))", "(lambda (a b) (+ a b))" },
+		{ "(define plus (lambda (a b) (+ a b)))", "(lambda (a b) (+ a b))" },
+		{ "(plus 1 2)", "3" },
 		
+		// Stop arg eval and call as soon as an error atom is encountered
+		{ "(plus unknown 2)", NULL },
+		{ "(plus (+ (+ (+ unknown 1) 1) 1) 2)", NULL },
+		
+		// Lambdas with multiple expressions in body
+		{ "(lambda (a b) (+ a 1) (+ b 1) (+ a b))", "(lambda (a b) (+ a 1) (+ b 1) (+ a b))" },
+		{ "(define plus (lambda (a b) (+ a 1) (+ b 1) (+ a b)))", "(lambda (a b) (+ a 1) (+ b 1) (+ a b))" },
+		{ "(plus 1 2)", "3" },
 	};
 	
 	
@@ -49,15 +80,22 @@ void test_builtins() {
 		
 		result = lvm_eval(lvm, ast, env);
 		
-		FILE* out_stream = open_memstream(&out_stream_ptr, &out_stream_size);
-			lvm_print(lvm, out_stream, result);
-		fclose(out_stream);
-		
-		st_check_str(out_stream_ptr, out);
-		
-		free(out_stream_ptr);
-		out_stream_ptr = NULL;
-		out_stream_size = 0;
+		if (out) {
+			// We expect a proper result atom
+			FILE* out_stream = open_memstream(&out_stream_ptr, &out_stream_size);
+				lvm_print(lvm, out_stream, result);
+			fclose(out_stream);
+			
+			st_check_str(out_stream_ptr, out);
+			
+			free(out_stream_ptr);
+			out_stream_ptr = NULL;
+			out_stream_size = 0;
+		} else {
+			// We expect an error atom with an error message
+			st_check_int(result->type, LVM_T_ERROR);
+			st_check_not_null(result->str);
+		}
 	}
 	
 	lvm_destroy(lvm);

@@ -1,5 +1,10 @@
+#include <string.h>
 #include "internals.h"
 
+
+//
+// Builtins
+//
 
 static lvm_atom_p lvm_add(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p env) {
 	if (argc != 2 || argv[0]->type != LVM_T_NUM || argv[1]->type != LVM_T_NUM)
@@ -53,6 +58,8 @@ static lvm_atom_p lvm_eq(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p en
 		return lvm_true_atom(lvm);
 	} else if (a->type == LVM_T_NUM && b->type == LVM_T_NUM) {
 		return (a->num == b->num) ? lvm_true_atom(lvm) : lvm_false_atom(lvm);
+	} else if (a->type == LVM_T_STR && b->type == LVM_T_STR) {
+		return strcmp(a->str, b->str) == 0 ? lvm_true_atom(lvm) : lvm_false_atom(lvm);
 	}
 	return lvm_false_atom(lvm);
 }
@@ -70,25 +77,35 @@ static lvm_atom_p lvm_gt(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p en
 }
 
 
+//
+// Syntax builtins
+//
+
+static bool lvm_verify_syn_arg_count(lvm_atom_p args, uint32_t count, bool can_take_more_args) {
+	lvm_atom_p arg = args;
+	for(uint32_t i = 0; i < count; i++) {
+		if (arg->type != LVM_T_PAIR)
+			return false;
+		arg = arg->rest;
+	}
+	
+	if ( !can_take_more_args && arg->type != LVM_T_NIL )
+		return false;
+	return true;
+}
+
 static lvm_atom_p lvm_define(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
-	if ( !(
-		args->type == LVM_T_PAIR && args->first->type == LVM_T_SYM &&
-		args->rest->type == LVM_T_PAIR && args->rest->rest->type == LVM_T_NIL
-	) )
+	if ( !( lvm_verify_syn_arg_count(args, 2, false) && args->first->type == LVM_T_SYM ) )
 		return lvm_error_atom(lvm, "lvm_define(): first arg needs to be a symbol followed by an expr");
 	lvm_atom_p name = args->first;
 	lvm_atom_p value = lvm_eval(lvm, args->rest->first, env);
-	lvm_env_put(lvm, env, name->str, value);
+	if (value->type != LVM_T_ERROR)
+		lvm_env_put(lvm, env, name->str, value);
 	return value;
 }
 
 static lvm_atom_p lvm_if(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
-	if ( !(
-		args->type == LVM_T_PAIR && args->rest->type == LVM_T_PAIR && (
-			args->rest->rest->type == LVM_T_NIL ||
-			(args->rest->rest->type == LVM_T_PAIR && args->rest->rest->rest->type == LVM_T_NIL)
-		)
-	) )
+	if ( !( lvm_verify_syn_arg_count(args, 2, false) || lvm_verify_syn_arg_count(args, 3, false) ) )
 		return lvm_error_atom(lvm, "lvm_if(): if needs 2 or 3 args");
 	lvm_atom_p evaled_condition = lvm_eval(lvm, args->first, env);
 	if (evaled_condition->type == LVM_T_ERROR)
@@ -104,12 +121,9 @@ static lvm_atom_p lvm_if(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
 }
 
 static lvm_atom_p lvm_lambda(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
-	if ( !(
-		args->type == LVM_T_PAIR && args->first->type == LVM_T_PAIR &&
-		args->rest->first->type == LVM_T_PAIR && args->rest->rest->type == LVM_T_NIL
-	) )
-		return lvm_error_atom(lvm, "lvm_lambda(): first arg can be an empty list, second arg has to be an expr");
-	return lvm_lambda_atom(lvm, args->first, args->rest->first);
+	if ( !( lvm_verify_syn_arg_count(args, 2, true) && args->first->type == LVM_T_PAIR ) )
+		return lvm_error_atom(lvm, "lvm_lambda(): first arg has to be a list followed by one or more expressions");
+	return lvm_lambda_atom(lvm, args->first, args->rest);
 }
 
 

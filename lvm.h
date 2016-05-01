@@ -45,14 +45,20 @@ typedef lvm_atom_p (*lvm_syntax_func_t)(lvm_p lvm, lvm_atom_p args, lvm_env_p en
 struct lvm_atom_s {
 	lvm_atom_type_t type;
 	union {
+		// Used by LVM_T_NUM
 		int64_t num;
+		// Used by LVM_T_SYM, LVM_T_STR, LVM_T_ERROR
 		char* str;
+		// Used by LVM_T_PAIR
 		struct {
 			lvm_atom_p first;
 			lvm_atom_p rest;
 		};
+		// Used by LVM_T_BUILTIN
 		lvm_builtin_func_t builtin;
+		// Used by LVM_T_SYNTAX
 		lvm_syntax_func_t syntax;
+		// Used by LVM_T_LAMBDA
 		struct {
 			lvm_atom_p args;
 			lvm_atom_p body;

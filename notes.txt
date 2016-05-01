@@ -1,8 +1,6 @@
 # ToDo
 
-- cleanup syntax arguments or checks (is it worth it?)
-- add tests for error cases (just check if error atom is returned)
-- write tests for lambdas
+- make = builtin do sane things for all atom types
 
 
 # Notes

@@ -125,7 +125,11 @@ void lvm_print(lvm_p lvm, FILE* output, lvm_atom_p atom) {
 			fprintf(output, "(lambda ");
 			lvm_print(lvm, output, atom->args);
 			fprintf(output, " ");
-			lvm_print(lvm, output, atom->body);
+			for(lvm_atom_p expr = atom->body; expr->type == LVM_T_PAIR; expr = expr->rest) {
+				lvm_print(lvm, output, expr->first);
+				if (expr->rest->type == LVM_T_PAIR)
+					fprintf(output, " ");
+			}
 			fprintf(output, ")");
 			break;
 		case LVM_T_ERROR:
