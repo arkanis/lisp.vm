@@ -35,7 +35,7 @@ void test_eval_rules() {
 	
 	lvm_p lvm = lvm_new();
 	lvm_env_p env = lvm_env_new(lvm, NULL);
-	lvm_env_put(lvm, env, "a",       lvm_num_atom(lvm, 17));
+	lvm_env_put(lvm, env, "a", lvm_num_atom(lvm, 17));
 	lvm_atom_p builtin_atom = lvm_builtin_atom(lvm, builtin_test_func);
 	lvm_env_put(lvm, env, "builtin", builtin_atom);
 	
@@ -64,8 +64,18 @@ void test_eval_rules() {
 		out_stream_size = 0;
 	}
 	
+	lvm_env_destroy(lvm, env);
+	lvm_destroy(lvm);
+}
+
+void test_error_cases() {
+	lvm_p lvm = lvm_new();
+	lvm_env_p env = lvm_env_new(lvm, NULL);
+	lvm_atom_p builtin_atom = lvm_builtin_atom(lvm, builtin_test_func);
+	lvm_env_put(lvm, env, "builtin", builtin_atom);
+	
 	// Symbols without binding eval to an error atom
-	result = lvm_eval(lvm, lvm_sym_atom(lvm, "x"), env);
+	lvm_atom_p result = lvm_eval(lvm, lvm_sym_atom(lvm, "x"), env);
 	st_check_int(result->type, LVM_T_ERROR);
 	
 	// Builtins eval to an error atom
@@ -97,5 +107,6 @@ void test_eval_rules() {
 
 int main() {
 	st_run(test_eval_rules);
+	st_run(test_error_cases);
 	return st_show_report();
 }
