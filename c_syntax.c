@@ -122,6 +122,9 @@ lvm_atom_p lvm_c_read(lvm_p lvm, FILE* input) {
 					)
 				);
 			}
+		case ';':
+			// Manual way to end an expression
+			break;
 		default:
 			ungetc(c, input);
 	}
