@@ -66,7 +66,7 @@ static lvm_atom_p lvm_eval_builtin(lvm_p lvm, lvm_atom_p builtin, lvm_atom_p arg
 }
 
 static lvm_atom_p lvm_eval_lambda(lvm_p lvm, lvm_atom_p lambda, lvm_atom_p args, lvm_env_p env) {
-	lvm_env_p lambda_env = lvm_env_new(lvm, env);
+	lvm_env_p lambda_env = lvm_env_new(lvm, lambda->env);
 	
 	lvm_atom_p arg_name = lambda->args;
 	lvm_atom_p arg_value = args;

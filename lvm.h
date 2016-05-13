@@ -62,6 +62,7 @@ struct lvm_atom_s {
 		struct {
 			lvm_atom_p args;
 			lvm_atom_p body;
+			lvm_env_p env;
 		};
 	};
 };
@@ -73,7 +74,7 @@ lvm_atom_p lvm_num_atom(lvm_p lvm, int64_t value);
 lvm_atom_p lvm_sym_atom(lvm_p lvm, char* value);
 lvm_atom_p lvm_str_atom(lvm_p lvm, char* value);
 lvm_atom_p lvm_pair_atom(lvm_p lvm, lvm_atom_p first, lvm_atom_p rest);
-lvm_atom_p lvm_lambda_atom(lvm_p lvm, lvm_atom_p args, lvm_atom_p body);
+lvm_atom_p lvm_lambda_atom(lvm_p lvm, lvm_atom_p args, lvm_atom_p body, lvm_env_p env);
 lvm_atom_p lvm_builtin_atom(lvm_p lvm, lvm_builtin_func_t func);
 lvm_atom_p lvm_syntax_atom(lvm_p lvm, lvm_syntax_func_t func);
 lvm_atom_p lvm_error_atom(lvm_p lvm, const char* format, ...);

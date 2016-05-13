@@ -79,10 +79,11 @@ lvm_atom_p lvm_pair_atom(lvm_p lvm, lvm_atom_p first, lvm_atom_p rest) {
 	return lvm_alloc_atom(lvm, pair);
 }
 
-lvm_atom_p lvm_lambda_atom(lvm_p lvm, lvm_atom_p args, lvm_atom_p body) {
+lvm_atom_p lvm_lambda_atom(lvm_p lvm, lvm_atom_p args, lvm_atom_p body, lvm_env_p env) {
 	lvm_atom_t lambda = { .type = LVM_T_LAMBDA };
 	lambda.args = args;
 	lambda.body = body;
+	lambda.env = env;
 	return lvm_alloc_atom(lvm, lambda);
 }
 

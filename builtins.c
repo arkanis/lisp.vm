@@ -135,7 +135,7 @@ static lvm_atom_p lvm_if(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
 static lvm_atom_p lvm_lambda(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {
 	if ( !( lvm_verify_syn_arg_count(args, 2, true) && args->first->type == LVM_T_PAIR ) )
 		return lvm_error_atom(lvm, "lvm_lambda(): first arg has to be a list followed by one or more expressions");
-	return lvm_lambda_atom(lvm, args->first, args->rest);
+	return lvm_lambda_atom(lvm, args->first, args->rest, env);
 }
 
 static lvm_atom_p lvm_quote(lvm_p lvm, lvm_atom_p args, lvm_env_p env) {

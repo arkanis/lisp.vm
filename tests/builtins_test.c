@@ -70,6 +70,11 @@ void test_builtins() {
 		{ "(lambda (a b) (+ a 1) (+ b 1) (+ a b))", "(lambda (a b) (+ a 1) (+ b 1) (+ a b))" },
 		{ "(define plus (lambda (a b) (+ a 1) (+ b 1) (+ a b)))", "(lambda (a b) (+ a 1) (+ b 1) (+ a b))" },
 		{ "(plus 1 2)", "3" },
+		
+		// Closures
+		{ "(define make_adder (lambda (n) (lambda (m) (+ n m)) ))", "(lambda (n) (lambda (m) (+ n m)))" },
+		{ "(define add10 (make_adder 10))", "(lambda (m) (+ n m))" },
+		{ "(add10 3)", "13" },
 	};
 	
 	
