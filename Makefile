@@ -2,7 +2,7 @@
 # (lvm_p) to every function but don't use it (yet) in some.
 CFLAGS = -std=c99 -Werror -Wall -Wextra -Wno-unused-parameter -g
 
-OBJS  = interpreter.o memory.o syntax.o eval.o builtins.o
+OBJS  = interpreter.o memory.o syntax.o eval.o builtins.o c_syntax.o
 TESTS = $(patsubst %.c,%,$(wildcard tests/*_test.c))
 
 all: main tests
