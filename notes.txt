@@ -1,81 +1,96 @@
 # ToDo
 
-
-# Notes
-
-hash function recommended by Gittinger: fnv1a
-
-calculate next prime for hash table size:
-- calculate highest set bit of hash table length (count leading zeros)
-- create a fixed table that maps the number of the highest set bit to a fixed prime number
-  this table just has 64 entries filled with pre calculated prime numbers
+- migrate pairs to arrays
+- Ideas for some confort functions
+	- lvm_print_str(lvm, atom) → malloced string
+	- lvm_read_str(lvm, str) → atom
 
 
-# Questions
+# GC with array atoms
 
-- How to handle environment lifetime? The GC knows when an environment is no longer needed
-  so env_destroy() should not be a part of the public API?
-  - But then the application might want to keep it alive as an interface between the script
-    and the program state.
-- What about an error atom to unwind the stack when an error occured. Something like NaN
-  in floating point. Should contain the error message. Might be useful to build something
-  like exception handling.
-- Why PUSH and POP argument stack?
-  Just pop it automatically when the function call is done.
+- Array atom: size_t length; lvm_atom_p atoms;
+- Halfspace one big array of atoms
+- With pairs all atoms are stored in the half space
+- With arrays there are some options:
+	a) malloc pointer list, array atom points to malloced list
+	b) Array content are the length following atoms in halfspace
+	c) Array content are the length consecutive atoms the atom points to
 
 
-# Ideas for some confort functions
+# Hash tables
 
-- lvm_print_atom_str(lvm, atom) → malloced string
-- lvm_read_str(lvm, str) → atom
+Hash function recommended by Gittinger: fnv1a. Seems to be a simple hash
+function made for identifiers. Maybe more compact than Murmur3 but probably not
+as universal.
 
+Calculate next prime for hash table size:
 
-# Structure scratch pad
+- Calculate highest set bit of hash table length (count leading zeros instruction)
+- Create a fixed table that maps the number of the highest set bit to a fixed
+  prime number. This table just has 64 entries filled with pre calculated prime
+  numbers.
 
-lvm.h
-	public header file
-	
-	lvm_p (not lvm_t!)
-	lvm functions
-	
-	lvm_atom_type_t
-	lvm_atom_p  (not lvm_atom_t!)	
-	atom alloc functions
-	
-	lvm_env_p (not lvm_env_t!)
-	env functions
-	
-	eval stack functions
-
-common.h
-	lvm_atom_t
-		can reuse lvm_atom_s but might also add more fields
-	lvm_t
-		actual content
-	lvm_hashtab_t
-		for use in lvm_t
-	
-	lvm_env_t
+Not sure if a prime number size really avoids collisions. Would need measuring
+with some actual running code (environment accesses).
 
 
-lvm.h
-	public API
-common.h
-	private bits of API
-syntax.h
-	reader
-	printer
-eval.h
-	eval
-builtins.h
-	all builtins
-memory.h
-	allocation functions
-main.c
-	test program of public API
+# Lifetimes of environments
+
+How to handle environment lifetime?
+
+Only the GC knows when an environment is no longer needed. So env_destroy()
+should not be a part of the public API? But then the application might want to
+keep it alive as an interface between the script and the program state.
+
+Approach:
+
+- Envronments created during evaluation are managed by eval().
+	- For normal non-capturing lambdas the env is no longer needed after the
+	  lambda evaluation.
+	- When a lambda captures something the env is transfered to the GC (and
+	  freed when no longer reachable).
+	- eval() has a buffer of environments, one env for one level of the scope
+	  stack.
+	- Envs can be reused and don't need to be allocated and freed all the time.
 
 
-# User atoms
+# Error handling
+
+What about an error atom to unwind the stack when an error occured? Something
+like NaN in floating point. Should contain the error message. Might be useful to
+build something like exception handling.
+
+- When an error atom is returned during eval() or while evaling lambda arguments
+  the evaluation is aborted and the error atom is returned.
+- Needs special handling from everything that evals, including all builtins!
+- Extend it to reader and printer as well? Useful to unwind the stack in the
+  parser?
+
+
+# Argument stack
+
+Why PUSH and POP on an argument stack? Why not Just pop it automatically when
+a builtin call is done? There seems to be no real reason.
+
+Manual push and pop might even cause trouble with the GC. If an argument is
+poped and a builtin uses it the GC doesn't see it. When the GC is run while the
+builtin executes it might free the popped argument while it is still used.
+
+So instead we just put all arguments on the argument stack and give the builtin
+an argc and argv style argument list. When the builtin is done we can drop all
+arguments from the stack at once.
+
+
+# Source code structure
+
+- Have one public header file. So the library can be used with just one .h and
+  .a file (header and static library).
+- Have one internal header file that declares all structures used by every one.
+- The rest are .c files that implement the delcared functions. Stuff only needed
+  in one .c file is declared in that file only.
+
+
+# User defined atoms
 
 - Use lower 8 bits of lvm_atom_type_t for normal types.
 - When type set to LVM_T_USER the higher 24 or 16 bit are the index of the user
@@ -89,53 +104,44 @@ main.c
 - Similar to resource objects in PHP? E.g. for stream I/O?
 
 
+# Structure ideas for a bytecode compiler and interpreter API
+
+lvm_new(...)
+	Probably with an options struct with stack size, heap size, etc.
+lvm_destroy()
+lvm_run(module)
+
+lvm_compile(source_code, existing_module) → module
+	Generated code and data is appended to existing_module. If it's NULL a new
+	module is created.
+
+lvm_mod_load(filename) → module
+lvm_mod_save(module, fliename)
+lvm_mod_destroy(module)
+
+
 # Customizable syntax
 
 Pass reader and printer functions in lvm_new() options struct. Then the user can
 supply a different parser and printer.
 
 
-# Structure ideas for a bytecode compiler and interpreter API
-
-interpreter
-	new(...)  // probably an options struct with stack size, heap size, etc.
-	destroy()
-	
-	run(module)
-
-compiler
-	new(...)
-	destroy()
-	
-	compile(source_code, existing_module) → module
-
-module
-	new(...)
-	
-	save(filename)
-	load(filename)
-
-
-# Syntax ideas
+# Lisp style syntax
 
 3141 → LVM_T_NUM
 "foo bar" → LVM_T_STR
-(a b c) → LVM_T_PAIR
+name → LVM_T_SYM
 nil → LVM_T_NIL
 true → LVM_T_TRUE
 false → LVM_T_FALSE
-_foo_bar → LVM_T_SYM
+(a b c) → LVM_T_ARRAY
 
-(define foo 123)
-(set! foo 124)
-(if cond t_case f_case)
-(quote expr)
-(begin expr...)
+(set foo 124)
+(if cond true_case false_case)
 (lambda (args) body...)
+(quote expr)
 
-(cons a b)
-(first pair)
-(rest rest)
+(at array index)
 
 (+ a b)
 (- a b)
@@ -145,26 +151,27 @@ _foo_bar → LVM_T_SYM
 
 (print expr)
 
-------------------------------------------------------------------
+
+# C style syntax
 
 3141 → LVM_T_NUM
 "foo bar" → LVM_T_STR
-[a b c] → LVM_T_PAIR
+name → LVM_T_SYM
 nil → LVM_T_NIL
 true → LVM_T_TRUE
 false → LVM_T_FALSE
-_foo_bar → LVM_T_SYM
+a(b, c) → (a b c) → LVM_T_ARRAY
 
-define: foo = 123
-set!:   foo = 124
-if:     if expr expr else expr
-quote:  [expr...]
-begin:  ...
-lambda: function(args) { body ... }
+( expr ) → expr
+{ expr expr ... } → (begin expr expr ...)
+foo = 123 → (set foo 124)
+if expr expr else expr → (if cond true_case false_case)
+func(args) { body ... } → (lambda (args) body...)
 
-cons(a, b)
-first(pair)
-rest(pair)
+[a, b, c] → (quote (a b c))
+:name → (quote name)
 
+array[index]
 a + b    a op b    op = + - * / ==
+
 print(expr)
