@@ -1,40 +1,95 @@
+This file contains some notes, stray thoughts or design ideas. It isn't
+documentation! Stuff written here is probably not implemented at all or not in
+this way. Be aware: This is just my brain dump.
+
+
 # ToDo
 
-- migrate pairs to arrays
 - Ideas for some confort functions
 	- lvm_print_str(lvm, atom) → malloced string
 	- lvm_read_str(lvm, str) → atom
+- migrate pairs to arrays (when we have variable length atoms)
 
 
-# GC with array atoms
+# Questions
+
+- Any problems with variable length atoms and the GC?
+
+
+# Source code structure
+
+- Have one public header file. So the library can be used with just one .h and
+  .a file (header and static library).
+- Have one internal header file that declares all structures used by every one.
+- The rest are .c files that implement the delcared functions. Stuff only needed
+  in one .c file is declared in that file only.
+
+
+# Garbage collection
+
+## GC approach
+
+Probably a basic Baker GC:
+
+- Two half spaces.
+- One is used to allocate new atoms.
+- When it's full all atoms reachable via the roots are copied to the second
+  half space.
+- Then the first one can be freed (or it's pages invalidated).
+- The two half spaces are swapped so that memmory is allocated from the new one.
+
+Collection is triggerd when lvm_alloc_atom() runs out of space in current half
+space.
+
+Roots:
+
+- Chain of eval environments (the envs created for lambda evaluation)
+- The argument stack
+- Builtin zone of the half space
+- Slot for current return value?
+
+What about atoms allocated in builtins but not yet added to an environment?
+
+- Solved via the "builtin zone" of the half space
+	- Region at the end of the current half space
+	- Atoms in there are assumed to be in use by the currently executed builtins
+- lvm_eval_builtin() sets the start of the builtin zone before executing a
+  builtin and resets it after the builtin returns.
+- During builtin execution new atoms are allocated at the end of the half space
+  (normal behaviour, no special case needed).
+- If there currently exists a "builtin zone" (a builtin is currently executing)
+  the GC moves all atoms in there into the new half space. This way temporary
+  atoms allocated in builtins remain alive.
+
+What about return values?
+
+Can the return value be in flight between eval and builtins when a collection
+happens? If so the GC needs to know it so it can use it as root.
+
+
+## GC with array atoms
 
 - Array atom: size_t length; lvm_atom_p atoms;
 - Halfspace one big array of atoms
 - With pairs all atoms are stored in the half space
 - With arrays there are some options:
 	a) malloc pointer list, array atom points to malloced list
-	b) Array content are the length following atoms in halfspace
+	b) Array content are the length following atoms in half space
 	c) Array content are the length consecutive atoms the atom points to
 
+Ultimate goal: No longer use malloc() for anything.
 
-# Hash tables
+- Variable length atoms, header followed by variable length data:
+	- Strings, errors
+	- Array element list
+- Fixed size atoms: Num, Lambda, Builtin, Syntax
+- Symbols and symbol strings are allocated in a different non collected space.
+- Singelton atoms (nil, true, false) are allocated in a fixed non collected space.
 
-Hash function recommended by Gittinger: fnv1a. Seems to be a simple hash
-function made for identifiers. Maybe more compact than Murmur3 but probably not
-as universal.
-
-Calculate next prime for hash table size:
-
-- Calculate highest set bit of hash table length (count leading zeros instruction)
-- Create a fixed table that maps the number of the highest set bit to a fixed
-  prime number. This table just has 64 entries filled with pre calculated prime
-  numbers.
-
-Not sure if a prime number size really avoids collisions. Would need measuring
-with some actual running code (environment accesses).
+This would require variable length atoms.
 
 
-# Lifetimes of environments
+## Lifetimes of environments
 
 How to handle environment lifetime?
 
@@ -54,19 +109,6 @@ Approach:
 	- Envs can be reused and don't need to be allocated and freed all the time.
 
 
-# Error handling
-
-What about an error atom to unwind the stack when an error occured? Something
-like NaN in floating point. Should contain the error message. Might be useful to
-build something like exception handling.
-
-- When an error atom is returned during eval() or while evaling lambda arguments
-  the evaluation is aborted and the error atom is returned.
-- Needs special handling from everything that evals, including all builtins!
-- Extend it to reader and printer as well? Useful to unwind the stack in the
-  parser?
-
-
 # Argument stack
 
 Why PUSH and POP on an argument stack? Why not Just pop it automatically when
@@ -81,13 +123,34 @@ an argc and argv style argument list. When the builtin is done we can drop all
 arguments from the stack at once.
 
 
-# Source code structure
+# Error handling
 
-- Have one public header file. So the library can be used with just one .h and
-  .a file (header and static library).
-- Have one internal header file that declares all structures used by every one.
-- The rest are .c files that implement the delcared functions. Stuff only needed
-  in one .c file is declared in that file only.
+What about an error atom to unwind the stack when an error occured? Something
+like NaN in floating point. Should contain the error message. Might be useful to
+build something like exception handling.
+
+- When an error atom is returned during eval() or while evaling lambda arguments
+  the evaluation is aborted and the error atom is returned.
+- Needs special handling from everything that evals, including all builtins!
+- Extend it to reader and printer as well? Useful to unwind the stack in the
+  parser?
+
+
+# Hash tables
+
+Hash function recommended by Gittinger: fnv1a. Seems to be a simple hash
+function made for identifiers. Maybe more compact than Murmur3 but probably not
+as universal.
+
+Calculate next prime for hash table size:
+
+- Calculate highest set bit of hash table length (count leading zeros instruction)
+- Create a fixed table that maps the number of the highest set bit to a fixed
+  prime number. This table just has 64 entries filled with pre calculated prime
+  numbers.
+
+Not sure if a prime number size really avoids collisions. Would need measuring
+with some actual running code (environment accesses).
 
 
 # User defined atoms
@@ -116,7 +179,7 @@ lvm_compile(source_code, existing_module) → module
 	module is created.
 
 lvm_mod_load(filename) → module
-lvm_mod_save(module, fliename)
+lvm_mod_save(module, filename)
 lvm_mod_destroy(module)
 
 
@@ -126,7 +189,7 @@ Pass reader and printer functions in lvm_new() options struct. Then the user can
 supply a different parser and printer.
 
 
-# Lisp style syntax
+## Lisp style syntax
 
 3141 → LVM_T_NUM
 "foo bar" → LVM_T_STR
@@ -152,7 +215,7 @@ false → LVM_T_FALSE
 (print expr)
 
 
-# C style syntax
+## C style syntax
 
 3141 → LVM_T_NUM
 "foo bar" → LVM_T_STR
@@ -164,7 +227,6 @@ a(b, c) → (a b c) → LVM_T_ARRAY
 
 ( expr ) → expr
 { expr expr ... } → (begin expr expr ...)
-foo = 123 → (set foo 124)
 if expr expr else expr → (if cond true_case false_case)
 func(args) { body ... } → (lambda (args) body...)
 
@@ -172,6 +234,58 @@ func(args) { body ... } → (lambda (args) body...)
 :name → (quote name)
 
 array[index]
-a + b    a op b    op = + - * / ==
+a + b    a op b    op is = + - * / ==
+	a + b → (+ a b)
+	foo = 123 → (set foo 124)
 
 print(expr)
+
+
+### C style syntax grammar
+
+Tokens:
+
+Keywords and single char tokens:
+	func
+	if
+	else
+	( )
+	[ ]
+	{ }
+	,
+	:
+	+ - * /
+	=
+	== < >
+
+Values:
+	3141 → num
+	"foo bar" → str
+	name → sym
+	nil
+	true
+	false
+
+Grammar rules:
+
+sep  = ";" | "\n"
+expr = num | str | sym | nil | true | false
+       "(" expr ")"
+       "{" expr [ sep expr ] "}"
+       "func" "(" ")" expr
+       "func" "(" sym [ "," sym ] ")" expr
+       "func" sym "(" ")" expr
+       "func" sym "(" sym [ "," sym ] ")" expr
+       "if" "(" expr ")" expr
+       "if" "(" expr ")" expr "else" expr
+       expr "+" expr
+       expr "-" expr
+       expr "*" expr
+       expr "/" expr
+       expr "=" expr
+       expr "==" expr
+       expr "<" expr
+       expr ">" expr
+       expr "[" expr "]"
+       expr "(" ")"
+       expr "(" expr [ "," expr ] ")"
