@@ -60,11 +60,74 @@ What about atoms allocated in builtins but not yet added to an environment?
 - If there currently exists a "builtin zone" (a builtin is currently executing)
   the GC moves all atoms in there into the new half space. This way temporary
   atoms allocated in builtins remain alive.
+BUT: How to patch the pointers to those?! We can't patch the lvm_atom_p
+variables in C code.
+  => So the builtin zone has to remain where it is...
 
 What about return values?
 
 Can the return value be in flight between eval and builtins when a collection
 happens? If so the GC needs to know it so it can use it as root.
+
+
+## GC tipps from Gittinger
+
+Only call GC at defined moments. If we run out of memory just set a flag and
+allocate more memory. Then collect once we reach a defined point where we know
+how the environment is: No buildin has stuff on the C stack or in registers we
+can't scan.
+
+- AST interpreter: in the trampoline
+- Bytecode interpreter: At the start of each bytecode (first thing in the for loop)
+- Machine code: At calls, returns and _backwards_ jumps
+	- Forward jumps make progress so we don't need to check them
+	- The check on return can be optimized by jumping to the GC instead of the
+	  return address. When the GC needs to run we just patch the return address
+	  to the GC address and store the real return address somewhere else.
+
+madvise was created for sequential sweep phase of the GC. So use it. :)
+
+Finalization with Baker GC:
+
+- Finilazation table with pointers to objects that need finalization
+- After copying live objects look through finalization table:
+	- If an object doesn't have a forward bit set we need to finalize it
+	- If not we just have to patch the pointer to the forward pointer
+
+3 generations of small spaces
+
+Book: Garbage Collection for Uniprocessors from Baker
+
+
+## Using an value passing stack like Lua
+
+Source:
+	24.2 - The Stack - The C API - Programming in Lua
+	https://www.lua.org/pil/24.2.html
+
+Lua uses an explicit stack of atoms. All atoms on the stack are retained by the
+GC. C functions have to work on atoms through the stack. Atom allocation pushes
+the allocated atom on the stack. C code then uses the allocated atom while it's
+on the stack.
+
+This solves the reachability problem of atoms and the GC can patch all atom
+pointers. All the pointers are on the stack and the C code can't even take a
+pointer and store it in a variable.
+
+However this gives the API a very stack based feel and makes simple things
+somewhat strange:
+
+	lvm_pair_atom(lvm, lvm_str_atom(lvm, "hello"), lvm_nil_atom(lvm));
+
+would become
+
+	lvm_push_str_atom(lvm, "hello");
+	lvm_nil_atom(lvm);
+	lvm_pair_atom(lvm);  // pops the previous two atoms
+
+But all in all this might be the simplest way to handle it. Especially since we
+already have the argument stack to pass arguments. Also Lua is a well known
+scripting language and this might make it easier for people to work this way.
 
 
 ## GC with array atoms
