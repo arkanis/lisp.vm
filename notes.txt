@@ -172,6 +172,26 @@ Approach:
 	- Envs can be reused and don't need to be allocated and freed all the time.
 
 
+# Compile while statement
+
+Normally compiled while statement requires 2 branches (conditional,
+unconditional). Can be optimized to just one conditional branch (and one
+unconditional just once at the start of the loop):
+
+JMP LL
+L0: statement
+LL: CMP ...
+    JUMP_IF_FALSE L0
+
+
+# JITing
+
+Common aproach: Abstract interpretation
+
+Good Book: PhD thesis from Urs Hölzle - Dynamic compiler for SELF
+Dynamic compilation for dynamic languages
+
+
 # Argument stack
 
 Why PUSH and POP on an argument stack? Why not Just pop it automatically when
