@@ -5,10 +5,26 @@ this way. Be aware: This is just my brain dump.
 
 # ToDo
 
+- Write some virtual memory tests on Windows
+	- VirtualAlloc function https://msdn.microsoft.com/en-us/library/windows/desktop/aa366887%28v=vs.85%29.aspx
+	- Reserving and Committing Memory https://msdn.microsoft.com/de-de/library/windows/desktop/aa366803%28v=vs.85%29.aspx
 - Ideas for some confort functions
 	- lvm_print_str(lvm, atom) → malloced string
 	- lvm_read_str(lvm, str) → atom
-- migrate pairs to arrays (when we have variable length atoms)
+- Migrate pairs to arrays (when we have variable length atoms)
+- Variable length atoms in GC (arrays and strings)
+	- store in GC space directly (faster than malloc)
+	- alloc atoms from top of eden space
+	- alloc data (string data, array elements) from bottom of eden space
+	- in a collect we only have to scan the atoms at the top, not the data at
+	  the bottom
+- GC integration with native code: ensure that during a buildin call no GC cycle
+  can happen. Use chained eden spaces to do so. If gc memory runs out during
+  buildin just append a new eden space.
+  	- can use pointers in buildin code
+  	- provide user explicit way to run GC, but tell him that this invalidates
+  	  all references he has on the stack or so.
+  	- can use chain of larger edens as oldspace, too
 
 
 # Questions
@@ -101,14 +117,16 @@ Book: Garbage Collection for Uniprocessors from Baker
 
 ## Using an value passing stack like Lua
 
-Source:
+Sources:
 	24.2 - The Stack - The C API - Programming in Lua
 	https://www.lua.org/pil/24.2.html
+	The Stack - MuJS Reference Manual
+	http://mujs.com/docs/reference
 
 Lua uses an explicit stack of atoms. All atoms on the stack are retained by the
 GC. C functions have to work on atoms through the stack. Atom allocation pushes
 the allocated atom on the stack. C code then uses the allocated atom while it's
-on the stack.
+on the stack. MuJS seems to do the same.
 
 This solves the reachability problem of atoms and the GC can patch all atom
 pointers. All the pointers are on the stack and the C code can't even take a
@@ -170,6 +188,8 @@ Approach:
 	- eval() has a buffer of environments, one env for one level of the scope
 	  stack.
 	- Envs can be reused and don't need to be allocated and freed all the time.
+
+
 
 
 # Compile while statement
