@@ -1,3 +1,6 @@
 *.o
 tests/*_test
 main
+
+#_make_clean_stops_here
+*.sublime-*

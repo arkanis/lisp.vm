@@ -23,4 +23,4 @@ tests: $(TESTS)
 
 # Delete everything listed in the .gitignore file, ensures that it's properly maintained.
 clean:
-	rm -fr `tr '\n' ' ' < .gitignore`
+	xargs --verbose --arg-file .gitignore --eof="#_make_clean_stops_here" --replace="PATTERN" sh -c "rm -rf PATTERN" 
