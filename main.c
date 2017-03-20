@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "lvm.h"
 
+//lvm_atom_p lvm_c_read(lvm_p lvm, FILE* input);
+
 lvm_atom_p print(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p env) {
 	printf("Hello from main :)\n");
 	return lvm_nil_atom(lvm);
@@ -19,6 +21,7 @@ int main() {
 		printf("> ");
 		fflush(stdout);
 		lvm_atom_p ast = lvm_read(lvm, stdin);
+		//lvm_atom_p ast = lvm_c_read(lvm, stdin);
 		if (ast == NULL)  // exit loop if lvm_read() gets an EOF
 			break;
 		lvm_atom_p result = lvm_eval(lvm, ast, local_env);
