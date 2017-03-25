@@ -1,0 +1,244 @@
+Second rethinking of the garbage collector approach. Still Baker GC but with
+some major modifications:
+
+- One half-space is made up of smaller regions (each 16 or 64 MiByte, whatever)
+- Don't collect during buildin function execution, we can't scan local variables
+  of the builtin C function. Instead add a new region to the current new space
+  and allocate new atoms from that region. Also set a flag and collect at the
+  next save point after that.
+	- Provide a manuel collect function that buildins can use. In case a builtin
+	  allocates a huge amount of atoms. Then it can periodically call it. If it
+	  makes sense the GC can run then.
+	- Should take a list of atoms that have to survive (the collect will treat
+	  them as roots). That's a way for C functions to tell the GC what they have
+	  in private variables. Thats a list of pointers to atom pointers (so the GC
+	  can acutally patch the addresses to point at the new atoms).
+	- Should accept a FORCE flag. Normal behaviour is to take the call as a
+	  hint: If the current half-space gets full do the collect. If not just
+	  ignore the call. With the FORCE flag we can make sure the GC is run and
+	  explicitly plan for the collect spikes at runtime (ala Spacecraft).
+- Variable length atoms in GC (arrays and strings)
+	- Store in GC space directly (faster than malloc)
+	- Alloc atoms themselves from the top of the current region
+	- Alloc data (string data, array elements) from the bottom of the region
+	- In a collect we only have to scan the atoms at the top, not the data at
+	  the bottom (except the atom tells us that it contains pointers to other
+	  atoms, e.g. with an array atom).
+
+
+# Original notes from a talk with Gittinger about this
+
+GC integration with native code: Ensure that during a buildin call no GC cycle
+can happen. Use chained eden spaces to do so. If gc memory runs out during
+builtin just append a new eden space.
+
+- can use pointers in buildin code
+- provide user explicit way to run GC, but tell him that this invalidates
+  all references he has on the stack or so.
+- can use chain of larger edens as oldspace, too
+
+
+# Virtual memory on Windows
+
+Pretty conservative memory allocator. Space can be reserved but has to be
+commited before using it.
+
+- VirtualAlloc function: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366887
+- Reserving and Committing Memory: https://msdn.microsoft.com/de-de/library/windows/desktop/aa366803
+
+Garbage collector can't just mmap() entire region and use it. Instead the large
+region has to be reserved at the beginning and then commited just before using
+it.
+
+When atoms and data are stored in separate parts we can free the data pages
+after they have been copied. We just have to keep the atom parts around for
+their forward pointers. Hopefully this reduces the overhead of commited memory
+somewhat.
+
+Same trick can be applied on Linux: Just use madvise(MADV_DONTNEED) to kick the
+data pages out of the resident set once we copied them.
+
+PROBLEM: Trick doesn't work since we don't know when we've moved all atoms in a
+region and we no longer need the data pages. There can always be an atom in
+another region that references a string atom in our region. We only know for
+sure once all regions are collected. But by then we can invalidate the entirety
+of the old regions.
+
+
+# Data structures
+
+gc state:
+	space_t uncollected  // core atoms (nil, etc.)
+	space_t new_space
+	space_t old_space
+
+space:
+	region_p start
+	region_p end
+
+region:
+	region_p next
+	uint16_t size
+	uint16_t flags
+	uint32_t free_offset
+	uint32_t free_size
+
+Goal: Don't use a single call to malloc(). Do everything in GC provided space we
+got with mmap().
+
+## gc state
+
+GC state contains only pointers to regions. Regions themselves form a kind of
+single linked list. Since we don't have to traverse it often this doesn't hurt
+us and we can easily swap pointers to change spaces or move regions from one
+space to another.
+
+The uncollected space is used for:
+
+- The interpreter context (lvm_t): Otherwise we would have to malloc() that one.
+  We can init the GC memory and this is the first chunk we can allocate from it.
+  The struct can be packaged into a string. That way the GC can actually
+  understand that the block of memory is needed.
+- Core atoms like nil, true, false, etc. Allocated when we initialize the
+  interpreter context.
+- Symbols (atoms and string data).
+
+No longer needed:
+
+- The fixed size region array. Contains 512 region structs for 8 GiByte of
+  usable GC memory. That array would just be about 10 KiByte large.
+  Optionally query size of installed memory and make the array large emough so
+  we can cover it (maybe by a factor of 2 to account for overcommit?).
+  REPLACED: We store that information as a header in each region instead.
+
+BE AWARE: The uncollected space doesn't move. And we build on that that
+assumption. This allows us to allocate the lvm_t struct in there and give the
+pointer to the host application. Also we can compare the core atoms and symbols
+by pointer thanks to that.
+
+
+## space
+
+For allocation we just need a pointer to the latest region of the space since it
+contains free memory (end). Even for appending a new region "end" we have all we
+need.
+
+We need the start pointer to traverse the list at the end of a collection and
+invalidate the pages in them.
+
+
+## region
+
+Struct is the header stored at the start of each region. Header should still be
+4 byte aligned.
+
+"size" is the size of the entire region shifted by 16. Therefore a region can
+only be multiple of 64 KiByte. This makes room for a 16 bit flags variable.
+
+
+# Handling of large atoms
+
+To allocate a atom larger than a region we create a properly sized region for
+that one atom.
+
+On collection we don't have to copy that atom into a new region. Instead we can
+just rewire the pointers to move that atoms region into the next space. This
+will probably require some adjustment to the collection code.
+
+Problems:
+
+- We have to detect during collection that we have a large atom which needs
+  special handling. Maybe try to put some bit flags into atoms and flag those
+  atoms. The region header should be stored in memory directly before the atom
+  itself. So we can get the region pointer by substractin the atom pointer.
+
+
+# Information the GC needs for each atom
+
+- atom size: The size of the atom data itself so we can step through all the
+  atom data at the top of a region.
+- reference iterator function: A function the GC can use to iterate over all the
+  references in an atom. When NULL we can skip the call. Only needed by arrays.
+
+
+# Functions
+
+lvm_p gc_init()
+	mmap() first uncollected region
+	alloc lvm_t from region
+	init spaces in lvm_t, zero out the rest
+		wire first region into uncollected space
+	init new space with first region
+		gc_space_add_region()
+	init old space zeroed out (no regions)
+
+atom_p gc_alloc(data_size, void** data_ptr)
+	if not enough space in current region:
+		Set "collect on next possibility" flag
+		Add new region to current new space (it's rewired as current region by gc_space_add_region).
+	
+		
+
+gc_collect()
+
+gc_space_add_region(space, size)
+	mmap() area
+	init header
+	rewire pointers in space and previous region
+
+
+Details:
+
+- Each space consists of a list of regions.
+	- Each region is filled with atoms (from the top) and their data (from the bottom). Data is something like string
+	  data or array data (pointers to atoms in array).
+- Collection:
+	lvm_alloc_atom() runs out of space in current half space:
+		Set "collect on next possibility" flag
+		Add new region to current new space.
+		Allocate from new region.
+	At start of eval() (or other places in the code that make sense?)
+		If "collect on next possibility" is set:
+			Do a full collection from the "new space" into the other space.
+			Invalidate the old regions
+			Put all remaining now free regions of the "other space" into our new "other space".
+
+
+Environments
+
+- maintain internal table of environments
+- give out handles
+- for now allocate environment atom in new space with normal C dict as payload
+
+Roots:
+
+- Environments in env table
+- Atoms on the argument stack
+- Argument atoms of the collect function that have to survive
+
+memory:
+	bool collect_at_next_possibility
+	uint current_new_space
+	space[2] spaces
+		uint regions_length
+		region[regions_length] regions:
+			start
+			size (in bytes)
+			free_offset (offset from the start of the region where the next atom can be alloced)
+			free_bytes (number of free bytes between atoms at the top and data at the bottom)
+			
+			is_space(atom_bytes, data_bytes) = free_bytes >= atom_bytes + data_bytes
+			alloc_atom(bytes) {
+				ptr = region.start + free_offset
+				free_offset += bytes
+				free_bytes -= bytes
+				return ptr
+			}
+			alloc_data(bytes) {
+				ptr = region.start + free_offset + free_bytes - bytes
+				free_bytes -= bytes
+				return ptr
+			}
+			
+			data_size() = size - free_offset - free_bytes
+			data_offset() = free_offset + free_bytes

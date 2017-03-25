@@ -1,0 +1,132 @@
+Pass reader and printer functions in lvm_new() options struct. Then the user can
+supply a different parser and printer.
+
+
+## Lisp style syntax
+
+3141 → LVM_T_NUM
+"foo bar" → LVM_T_STR
+name → LVM_T_SYM
+nil → LVM_T_NIL
+true → LVM_T_TRUE
+false → LVM_T_FALSE
+(a b c) → LVM_T_ARRAY
+
+(set foo 124)
+(if cond true_case false_case)
+(lambda (args) body...)
+(begin expr expr ...)
+(quote expr)
+
+(at array index)
+
+(+ a b)
+(- a b)
+(* a b)
+(/ a b)
+(= a b)
+
+(print expr)
+
+
+## C style syntax
+
+3141 → LVM_T_NUM
+"foo bar" → LVM_T_STR
+name → LVM_T_SYM
+nil → LVM_T_NIL
+true → LVM_T_TRUE
+false → LVM_T_FALSE
+a(b, c) → (a b c) → LVM_T_ARRAY
+
+( expr ) → expr
+{ expr expr ... } → (begin expr expr ...)
+if expr expr else expr → (if cond true_case false_case)
+func(args) { body ... } → (lambda (args) body...)
+
+[a, b, c] → (quote (a b c))
+:name → (quote name)
+
+array[index]
+a + b    a op b    op is = + - * / ==
+	a + b → (+ a b)
+	foo = 123 → (set foo 124)
+
+print(expr)
+
+
+### C style syntax grammar
+
+Tokens:
+
+Keywords and single char tokens:
+	func
+	if
+	else
+	( )
+	[ ]
+	{ }
+	,
+	:
+	+ - * /
+	=
+	== < >
+
+Values:
+	3141 → num
+	"foo bar" → str
+	name → sym
+	nil
+	true
+	false
+
+Grammar rules:
+
+sep  = ";" | "\n"
+expr = num | str | sym | nil | true | false
+       "(" expr ")"
+       "{" expr [ sep expr ] "}"
+       "func" "(" ")" expr
+       "func" "(" sym [ "," sym ] ")" expr
+       "func" sym "(" ")" expr
+       "func" sym "(" sym [ "," sym ] ")" expr
+       "if" "(" expr ")" expr
+       "if" "(" expr ")" expr "else" expr
+       expr "+" expr
+       expr "-" expr
+       expr "*" expr
+       expr "/" expr
+       expr "=" expr
+       expr "==" expr
+       expr "<" expr
+       expr ">" expr
+       expr "[" expr "]"
+       expr "(" ")"
+       expr "(" expr [ "," expr ] ")"
+
+
+## C style syntax 02
+
+3141      → LVM_T_NUM   → 3141
+"foo bar" → LVM_T_STR   → "foo bar"
+name      → LVM_T_SYM   → name
+nil       → LVM_T_NIL   → nil
+true      → LVM_T_TRUE  → true
+false     → LVM_T_FALSE → false
+(a b c)   → LVM_T_ARRAY → a(b, c)
+
+(set foo 124)                  → foo = 124
+(if cond true_case false_case) → if (cond) true_case else false_case
+(lambda (args) body...)        → function(args) body...
+(begin expr expr ...)          → { expr expr ... }
+(quote expr)                   → :expr, [expr, expr, expr]
+
+(at array index)               → array[index]
+
+(+ a b) → a + b
+(- a b) → a - b
+(* a b) → a * b
+(/ a b) → a / b
+(= a b) → a == b
+
+(print expr) → print(expr)

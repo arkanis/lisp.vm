@@ -1,0 +1,215 @@
+GC approach: Probably a basic Baker GC to get a feeling for it.
+
+- Two half spaces.
+- One is used to allocate new atoms.
+- When it's full all atoms reachable via the roots are copied to the second
+  half space.
+- Then the first one can be freed (or it's pages invalidated).
+- The two half spaces are swapped so that memmory is allocated from the new one.
+
+Collection is triggerd when lvm_alloc_atom() runs out of space in current half
+space.
+
+Roots:
+
+- Chain of eval environments (the envs created for lambda evaluation)
+- The argument stack (used to pass arguments to builtins)
+- Builtin zone of the half space (see next paragraph)
+- Slot for current return value?
+
+What about atoms allocated in builtins but not yet added to an environment?
+
+- Solved via the "builtin zone" of the half space
+	- Region at the end of the current half space
+	- Atoms in there are assumed to be in use by the currently executed builtins
+- lvm_eval_builtin() sets the start of the builtin zone before executing a
+  builtin and resets it after the builtin returns.
+- During builtin execution new atoms are allocated at the end of the half space
+  (normal behaviour, no special case needed).
+- If there currently exists a "builtin zone" (a builtin is currently executing)
+  the GC moves all atoms in there into the new half space. This way temporary
+  atoms allocated in builtins remain alive.
+BUT: How to patch the pointers to those?! We can't patch the lvm_atom_p
+variables in C code.
+  => So the builtin zone has to remain where it is...
+
+What about return values?
+
+Can the return value be in flight between eval and builtins when a collection
+happens? If so the GC needs to know it so it can use it as root.
+
+
+# API to interact with the GC: Using an value passing stack like Lua
+
+Sources:
+	24.2 - The Stack - The C API - Programming in Lua
+	https://www.lua.org/pil/24.2.html
+	The Stack - MuJS Reference Manual
+	http://mujs.com/docs/reference
+
+Lua uses an explicit stack of atoms. All atoms on the stack are retained by the
+GC. C functions have to work on atoms through the stack. Atom allocation pushes
+the allocated atom on the stack. C code then uses the allocated atom while it's
+on the stack. MuJS seems to do the same.
+
+This solves the reachability problem of atoms and the GC can patch all atom
+pointers. All the pointers are on the stack and the C code can't even take a
+pointer and store it in a variable.
+
+However this gives the API a very stack based feel and makes simple things
+somewhat strange:
+
+	lvm_pair_atom(lvm, lvm_str_atom(lvm, "hello"), lvm_nil_atom(lvm));
+
+would become
+
+	lvm_push_str_atom(lvm, "hello");
+	lvm_nil_atom(lvm);
+	lvm_pair_atom(lvm);  // pops the previous two atoms
+
+But all in all this might be the simplest way to handle it. Especially since we
+already have the argument stack to pass arguments. Also Lua is a well known
+scripting language and this might make it easier for people to work this way.
+
+
+# GC with array atoms
+
+- Array atom: size_t length; lvm_atom_p atoms;
+- Halfspace one big array of atoms
+- With pairs all atoms are stored in the half space
+- With arrays there are some options:
+	a) malloc pointer list, array atom points to malloced list
+	b) Array content are the length following atoms in half space
+	c) Array content are the length consecutive atoms the atom points to
+
+Ultimate goal: No longer use malloc() for anything.
+
+- Variable length atoms, header followed by variable length data:
+	- Strings, errors
+	- Array element list
+- Fixed size atoms: Num, Lambda, Builtin, Syntax
+- Symbols and symbol strings are allocated in a different non collected space.
+- Singelton atoms (nil, true, false) are allocated in a fixed non collected space.
+
+This would require variable length atoms.
+
+
+# Lifetimes of environments
+
+How to handle environment lifetime?
+
+Only the GC knows when an environment is no longer needed. So env_destroy()
+should not be a part of the public API? But then the application might want to
+keep it alive as an interface between the script and the program state.
+
+Approach:
+
+- Envronments created during evaluation are managed by eval().
+	- For normal non-capturing lambdas the env is no longer needed after the
+	  lambda evaluation.
+	- When a lambda captures something the env is transfered to the GC (and
+	  freed when no longer reachable).
+	- eval() has a buffer of environments, one env for one level of the scope
+	  stack.
+	- Envs can be reused and don't need to be allocated and freed all the time.
+
+
+# API sketchpad for stack based API
+
+stack_based_api_sketch() {
+	// lvm_atom_t is a stack index instead of pointer
+	lvm_atom_t a = lvm_atom_str(lvm, "hello world");
+	// BUG: Can't drop an index, can we? We can only drop the topmost n elements
+	// on the stack. We could NULL one index but that would just tempt users to
+	// grow the stack way to much.
+	lvm_atom_drop(lvm, a);
+	
+	lvm_atom_t b = lvm_atom_str(lvm, "hello world");
+	lvm_env_put_drop(lvm, "b", b);
+	
+	lvm_atom_pair_start(lvm);  // allocs result atom on current top of stack
+		lvm_atom_str(lvm, "foo");
+		lvm_atom_nil(lvm);
+	lvm_atom_pair_end(lvm);  // consume two arguments from stack and put them into pair
+	
+	// Use a macro to make the call like this
+	lvm_atom_pair_drop(lvm, lvm_atom_str(lvm, "foo"), lvm_atom_nil(lvm));
+	
+	lvm_atom_str(lvm, "foo");
+	lvm_atom_nil(lvm);
+	lvm_atom_pair(lvm);
+}
+
+lvm_atom_t lvm_atom_nil(lvm_t lvm);
+lvm_atom_t lvm_atom_true(lvm_t lvm);
+lvm_atom_t lvm_atom_false(lvm_t lvm);
+lvm_atom_t lvm_atom_num(lvm_t lvm, int64_t value);
+lvm_atom_t lvm_atom_sym(lvm_t lvm, char* value);
+lvm_atom_t lvm_atom_str(lvm_t lvm, char* value);
+lvm_atom_t lvm_atom_array(lvm_t lvm, size_t length);
+lvm_atom_t lvm_atom_lambda(lvm_t lvm, lvm_atom_t args, lvm_atom_t body, lvm_env_t env);
+lvm_atom_t lvm_atom_lambda_drop(lvm_t lvm, lvm_atom_t args, lvm_atom_t body, lvm_env_t env);
+lvm_atom_t lvm_atom_builtin(lvm_t lvm, lvm_builtin_func_t func);
+lvm_atom_t lvm_atom_syntax(lvm_t lvm, lvm_builtin_func_t, func);
+lvm_atom_t lvm_atom_error(lvm_t lvm, const char* format, ...);
+
+- atom alloc → on stack
+- env alloc → on stack
+- stack: drop, dup
+
+Problems:
+
+- Can't just drop one specific index. We would get holes in our stack.
+  SOLUTION: When can alloc new atoms in those holes (kind like a free list).
+  Then the stack wouldn't grow out of control by allocing new atoms.
+  WON'T WORK: See next problem and it's "solution".
+- Users have to explicitly drop all atoms they allocated from the "stack".
+  Otherwise the stack would grow and we got memory leaks effectively (the GC
+  thinks these atoms are still in use and won't free them). We can't
+  automatically drop atoms either since it's no longer a stack and we can't drop
+  all the atoms allocated in former holes in the stack.
+  SOLUTION: Back to square one. Enforce proper stack semantics. :( Then
+  automatically drop any atoms on the stack after a builtin function returns.
+- SOLUTION to both problems above: Enforce proper stack semantics between calls
+  to builtins. Make sure that during a builtin new atoms are only allocated
+  within the builtins "stack frame". It won't allocate atoms in upper "stack
+  frames". Within one builtin execution that builtin can drop indices in it's
+  stack frame (even arguments) and those indices can be reused to allocate new
+  atoms. But after the builtin returns we can drop all atoms left in its "stack
+  frame" (except the return value atom of course).
+  That way we could use a stack based approach but the API can be used almost
+  normally (with occasional drop() calls).
+
+
+# API sketchpad for alloc/no longer needed based API
+
+When the user tells us that he no longer needs a reference to the atom we can
+automatically drop it from the stack. Exposed API similar to ref/unref from
+reference counting.
+
+ref_based_api_sketch() {
+	lvm_atom_t a = lvm_atom_str_ref(lvm, "hello world");
+	lvm_unref(lvm, a);
+	
+	// Results in funny API names: Creates a new lambda (_ref suffix) but unrefs
+	// all passed arguments (_unref suffix).
+	lvm_atom_t b = lvm_atom_lambda_unref_ref(lvm, ...);
+}
+
+With a little it of API changes this can be as easy as with references:
+
+	lvm_pair_atom_drop(lvm, lvm_str_atom(lvm, "hello"), lvm_nil_atom(lvm));
+
+The key is that normal allocations just return indices. Each function that takes
+atoms as arguments can also have a *_drop version that automatically drops the
+atoms that were passed to it:
+
+	lvm_str_atom(lvm, "hello");
+	lvm_nil_atom(lvm);
+	lvm_pair_atom_drop(lvm);
+
+Problems:
+
+- Users might confuse it with reference counting and do multiple refs/unrefs.
+  SOLUTION: Just don't provide a general _ref function that can be used to
+  "increment the ref count". Then users can't do it.

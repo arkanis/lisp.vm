@@ -36,7 +36,9 @@ typedef enum {
 	LVM_T_LAMBDA,
 	LVM_T_BUILTIN,
 	LVM_T_SYNTAX,
-	LVM_T_ERROR
+	LVM_T_ERROR,
+	LVM_T_FORWARD_PTR,
+	LVM_T_MAX
 } lvm_atom_type_t;
 
 typedef lvm_atom_p (*lvm_builtin_func_t)(lvm_p lvm, size_t argc, lvm_atom_p argv[], lvm_env_p env);
@@ -64,6 +66,8 @@ struct lvm_atom_s {
 			lvm_atom_p body;
 			lvm_env_p env;
 		};
+		// Used by LVM_T_FORWARD_PTR
+		void* new_atom;
 	};
 };
 

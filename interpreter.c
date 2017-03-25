@@ -1,7 +1,12 @@
 #include "internals.h"
 
 lvm_p lvm_new() {
+#	ifdef GC_REGION_BAKER
+	lvm_p lvm = lvm_gc_init();
+#	else
 	lvm_p lvm = malloc(sizeof(lvm_t));
+#	endif
+	
 	if (lvm == NULL)
 		return NULL;
 	

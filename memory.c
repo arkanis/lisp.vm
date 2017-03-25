@@ -16,9 +16,12 @@ static lvm_atom_p lvm_alloc_atom(lvm_p lvm, lvm_atom_t content);
 void lvm_mem_init(lvm_p lvm) {
 	lvm_dict_new(&lvm->symbol_table);
 	
+#	ifdef GC_REGION_BAKER
+#	else
 	lvm->nil_atom   = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_NIL   });
 	lvm->true_atom  = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_TRUE  });
 	lvm->false_atom = lvm_alloc_atom(lvm, (lvm_atom_t){ .type = LVM_T_FALSE });
+#	endif
 	
 	lvm->arg_stack_length = 0;
 	lvm->arg_stack_capacity = 16;

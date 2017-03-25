@@ -8,6 +8,27 @@ SH_GEN_DECL(lvm_dict, const char*, lvm_atom_p);
 
 
 //
+// Garbage collector stuff
+//
+
+typedef struct lvm_gc_s        lvm_gc_t,        *lvm_gc_p;
+typedef struct lvm_gc_space_s  lvm_gc_space_t,  *lvm_gc_space_p;
+typedef struct lvm_gc_region_s lvm_gc_region_t, *lvm_gc_region_p;
+
+struct lvm_gc_space_s {
+	lvm_gc_region_p first;
+	lvm_gc_region_p last;
+};
+
+struct lvm_gc_s {
+	lvm_gc_space_t uncollected;
+	lvm_gc_space_t new_space;
+	lvm_gc_space_t old_space;
+	bool collect_on_next_possibility;
+};
+
+
+//
 // General interpreter stuff
 //
 
@@ -22,6 +43,7 @@ struct lvm_s {
 	size_t arg_stack_length, arg_stack_capacity;
 	
 	size_t alloced_atoms;
+	lvm_gc_t gc;
 };
 
 

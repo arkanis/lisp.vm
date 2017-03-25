@@ -143,5 +143,9 @@ void lvm_print(lvm_p lvm, FILE* output, lvm_atom_p atom) {
 		case LVM_T_ERROR:
 			fprintf(output, "error(%s)\n", atom->str);
 			break;
+		
+		default:
+			fprintf(output, "unknown(%d)\n", atom->type);
+			break;
 	}
 }

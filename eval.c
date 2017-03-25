@@ -38,6 +38,9 @@ lvm_atom_p lvm_eval(lvm_p lvm, lvm_atom_p atom, lvm_env_p env) {
 			return lvm_error_atom(lvm, "lvm_eval(): can't eval builtin!");
 		case LVM_T_SYNTAX:
 			return lvm_error_atom(lvm, "lvm_eval(): can't eval syntax!");
+		
+		default:
+			return lvm_error_atom(lvm, "lvm_eval(): unknown atom type!");
 	}
 	
 	return NULL;
