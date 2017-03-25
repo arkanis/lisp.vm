@@ -116,6 +116,8 @@ lvm_atom_p lvm_error_atom(lvm_p lvm, const char* format, ...) {
 #define SLIM_HASH_IMPLEMENTATION
 #include "slim_hash.h"
 
+#define SLIM_HASH_CALLOC lvm_gc_calloc
+#define SLIM_HASH_FREE   lvm_gc_free
 SH_GEN_DICT_DEF(lvm_dict, const char*, lvm_atom_p);
 
 

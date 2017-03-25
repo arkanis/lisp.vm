@@ -89,6 +89,14 @@ SH_GEN_HASH_DEF(con_list, int32_t, void*)
 
 
 #ifdef SLIM_HASH_IMPLEMENTATION
+    
+#ifndef SLIM_HASH_CALLOC
+#define SLIM_HASH_CALLOC calloc
+#endif
+
+#ifndef SLIM_HASH_FREE
+#define SLIM_HASH_FREE free
+#endif
 
 #define SH_GEN_DEF(prefix, key_t, value_t, hash_expr, key_cmp_expr, key_put_expr, key_del_expr)  \
     /**                                                                          \
@@ -166,7 +174,7 @@ SH_GEN_HASH_DEF(con_list, int32_t, void*)
         new_hashmap.length = 0;                                                                         \
         new_hashmap.capacity = new_capacity;                                                            \
         new_hashmap.deleted = 0;                                                                        \
-        new_hashmap.slots = calloc(new_hashmap.capacity, sizeof(new_hashmap.slots[0]));                 \
+        new_hashmap.slots = SLIM_HASH_CALLOC(new_hashmap.capacity, sizeof(new_hashmap.slots[0]));       \
                                                                                                         \
         /* Failed to allocate memory for new hash map, leave the original untouched */                  \
         if (new_hashmap.slots == NULL)                                                                  \
@@ -176,7 +184,7 @@ SH_GEN_HASH_DEF(con_list, int32_t, void*)
             prefix##_put(&new_hashmap, it->key, it->value);                                             \
         }                                                                                               \
                                                                                                         \
-        free(hashmap->slots);                                                                           \
+        SLIM_HASH_FREE(hashmap->slots);                                                                 \
         *hashmap = new_hashmap;                                                                         \
         return true;                                                                                    \
     }                                                                                                   \
@@ -193,7 +201,7 @@ SH_GEN_HASH_DEF(con_list, int32_t, void*)
         hashmap->length = 0;                     \
         hashmap->capacity = 0;                   \
         hashmap->deleted = 0;                    \
-        free(hashmap->slots);                    \
+        SLIM_HASH_FREE(hashmap->slots);          \
         hashmap->slots = NULL;                   \
     }                                            \
                                                  \

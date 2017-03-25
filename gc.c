@@ -52,21 +52,26 @@ lvm_atom_p lvm_gc_alloc_atom_from_space(lvm_gc_space_p space, lvm_atom_type_t ty
 void*      lvm_gc_alloc_data_from_space(lvm_gc_space_p space, size_t data_size, bool* added_new_region);
 lvm_atom_p lvm_gc_alloc_from_space(lvm_gc_space_p space, lvm_atom_type_t type, size_t data_size, void** data_ptr, bool* added_new_region);
 
+void* lvm_gc_calloc(size_t length, size_t size_per_element);
+void  lvm_gc_free(void* ptr);
+
 void lvm_gc_pair_child_collector(lvm_p lvm, lvm_atom_p atom, lvm_gc_collect_child_t collect_child);
 size_t lvm_gc_get_str_data(lvm_p lvm, lvm_atom_p atom, void** data_ptr);
 
 lvm_gc_atom_info_t lvm_gc_atom_infos[] = {
-	[LVM_T_NIL]     = {.size = offsetof(struct lvm_atom_s, type)    + sizeof(lvm_atom_type_t)    },
-	[LVM_T_TRUE]    = {.size = offsetof(struct lvm_atom_s, type)    + sizeof(lvm_atom_type_t)    },
-	[LVM_T_FALSE]   = {.size = offsetof(struct lvm_atom_s, type)    + sizeof(lvm_atom_type_t)    },
-	[LVM_T_NUM]     = {.size = offsetof(struct lvm_atom_s, num)     + sizeof(int64_t)            },
-	[LVM_T_SYM]     = {.size = offsetof(struct lvm_atom_s, str)     + sizeof(char*),             .get_data = lvm_gc_get_str_data },
-	[LVM_T_STR]     = {.size = offsetof(struct lvm_atom_s, str)     + sizeof(char*),             .get_data = lvm_gc_get_str_data },
-	[LVM_T_PAIR]    = {.size = offsetof(struct lvm_atom_s, rest)    + sizeof(lvm_atom_p),        .child_collector = lvm_gc_pair_child_collector },
-	[LVM_T_LAMBDA]  = {.size = offsetof(struct lvm_atom_s, env)     + sizeof(lvm_env_p)          },
-	[LVM_T_BUILTIN] = {.size = offsetof(struct lvm_atom_s, builtin) + sizeof(lvm_builtin_func_t) },
-	[LVM_T_SYNTAX]  = {.size = offsetof(struct lvm_atom_s, syntax)  + sizeof(lvm_syntax_func_t)  },
-	[LVM_T_ERROR]   = {.size = offsetof(struct lvm_atom_s, str)     + sizeof(char*),             .get_data = lvm_gc_get_str_data }
+	[LVM_T_NIL]     = {.size = offsetof(struct lvm_atom_s, type)     + sizeof(lvm_atom_type_t)    },
+	[LVM_T_TRUE]    = {.size = offsetof(struct lvm_atom_s, type)     + sizeof(lvm_atom_type_t)    },
+	[LVM_T_FALSE]   = {.size = offsetof(struct lvm_atom_s, type)     + sizeof(lvm_atom_type_t)    },
+	[LVM_T_NUM]     = {.size = offsetof(struct lvm_atom_s, num)      + sizeof(int64_t)            },
+	[LVM_T_SYM]     = {.size = offsetof(struct lvm_atom_s, str)      + sizeof(char*),             .get_data = lvm_gc_get_str_data },
+	[LVM_T_STR]     = {.size = offsetof(struct lvm_atom_s, str)      + sizeof(char*),             .get_data = lvm_gc_get_str_data },
+	[LVM_T_PAIR]    = {.size = offsetof(struct lvm_atom_s, rest)     + sizeof(lvm_atom_p),        .child_collector = lvm_gc_pair_child_collector },
+	[LVM_T_LAMBDA]  = {.size = offsetof(struct lvm_atom_s, env)      + sizeof(lvm_env_p),         .child_collector = lvm_gc_lambda_child_collector },
+	[LVM_T_BUILTIN] = {.size = offsetof(struct lvm_atom_s, builtin)  + sizeof(lvm_builtin_func_t) },
+	[LVM_T_SYNTAX]  = {.size = offsetof(struct lvm_atom_s, syntax)   + sizeof(lvm_syntax_func_t)  },
+	[LVM_T_ERROR]   = {.size = offsetof(struct lvm_atom_s, str)      + sizeof(char*),             .get_data = lvm_gc_get_str_data }
+	[LVM_T_ENV]     = {.size = offsetof(struct lvm_atom_s, bindings) + sizeof(lvm_dict_t),        .child_collector = lvm_gc_env_child_collector,
+	                                                                                              .get_data = lvm_gc_get_env_data }
 };
 
 #define LVM_GC_64K          (65536)
@@ -191,7 +196,10 @@ void lvm_gc_collect_atom(lvm_p lvm, lvm_atom_p* atom) {
 	if (data_size > 0) {
 		memcpy(new_data_ptr, old_data_ptr, data_size);
 		// TODO: Find a proper way to patch the data pointer of the atom
-		new_atom->str = new_data_ptr;
+		if (new_atom->type == LVM_T_ENV)
+			new_atom->bindings->slots = new_data_ptr;
+		else
+			new_atom->str = new_data_ptr;
 	}
 	
 	// Write forward pointer
@@ -298,6 +306,16 @@ lvm_atom_p lvm_gc_alloc_from_space(lvm_gc_space_p space, lvm_atom_type_t type, s
 	return atom;
 }
 
+void* lvm_gc_calloc(size_t length, size_t size_per_element) {
+	// FIXME: How to get the lvm_p pointer?!
+}
+
+void  lvm_gc_free(void* ptr) {
+	// Nothing to do... data will be freed on next collect
+	return;
+}
+
+
 
 
 
@@ -311,4 +329,19 @@ void lvm_gc_pair_child_collector(lvm_p lvm, lvm_atom_p atom, lvm_gc_collect_chil
 size_t lvm_gc_get_str_data(lvm_p lvm, lvm_atom_p atom, void** data_ptr) {
 	*data_ptr = atom->str;
 	return strlen(atom->str) + 1;
+}
+
+void lvm_gc_env_child_collector(lvm_p lvm, lvm_atom_p atom, lvm_gc_collect_child_t collect_child) {
+	collect_child(lvm, &atom->parent);
+}
+
+size_t lvm_gc_get_env_data(lvm_p lvm, lvm_atom_p atom, void** data_ptr) {
+	*data_ptr = atom->bindings->slots;
+	return atom->bindings->capacity * sizeof(atom->bindings->slots[0]);
+}
+
+void lvm_gc_lambda_child_collector(lvm_p lvm, lvm_atom_p atom, lvm_gc_collect_child_t collect_child) {
+	collect_child(lvm, &atom->args);
+	collect_child(lvm, &atom->body);
+	collect_child(lvm, &atom->env);
 }

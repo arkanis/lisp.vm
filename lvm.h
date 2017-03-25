@@ -37,6 +37,7 @@ typedef enum {
 	LVM_T_BUILTIN,
 	LVM_T_SYNTAX,
 	LVM_T_ERROR,
+	LVM_T_ENV,
 	LVM_T_FORWARD_PTR,
 	LVM_T_MAX
 } lvm_atom_type_t;
@@ -68,6 +69,11 @@ struct lvm_atom_s {
 		};
 		// Used by LVM_T_FORWARD_PTR
 		void* new_atom;
+		// Used by LVM_T_ENV
+		struct {
+			lvm_atom_p parent;
+			lvm_dict_t bindings;
+		};
 	};
 };
 

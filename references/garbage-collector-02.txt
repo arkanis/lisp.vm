@@ -157,8 +157,37 @@ Problems:
 
 - atom size: The size of the atom data itself so we can step through all the
   atom data at the top of a region.
+- data ptr and size: Position and size of the atoms payload data so it can be
+  moved to the next half-space. Only needed for atoms with payload (string,
+  symbol, array, ...).
 - reference iterator function: A function the GC can use to iterate over all the
   references in an atom. When NULL we can skip the call. Only needed by arrays.
+
+
+# Environments
+
+- maintain internal table of environments
+- give out handles
+- for now allocate environment atom in new space with normal C dict as payload
+
+PROBLEM: Where to hold the env table? Statically allocate in uncollected space?
+Embed a double linked list into the env struct?
+
+Current way:
+
+- Just pass pointers to current environments to collect function.
+- That would usually be the eval environment (and with it all its parents) and
+  any environments a builtin might use right now.
+- Environments of captured lambdas are reached through their lambda atoms.
+
+
+# Roots
+
+- Environments in env table
+- Atoms on the argument stack
+- Argument atoms of the collect function that have to survive
+
+
 
 
 # Functions
@@ -203,18 +232,6 @@ Details:
 			Invalidate the old regions
 			Put all remaining now free regions of the "other space" into our new "other space".
 
-
-Environments
-
-- maintain internal table of environments
-- give out handles
-- for now allocate environment atom in new space with normal C dict as payload
-
-Roots:
-
-- Environments in env table
-- Atoms on the argument stack
-- Argument atoms of the collect function that have to survive
 
 memory:
 	bool collect_at_next_possibility
