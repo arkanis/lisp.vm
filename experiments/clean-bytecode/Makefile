@@ -1,10 +1,11 @@
-GCC_ARGS = -Wall -std=gnu99 -g
-#GCC_ARGS = -Wall -std=gnu99 -O2 -DNDEBUG
-LINKER_ARGS = 
+CFLAGS = -g -Wall -std=gnu99
 
-%.o: %.c %.h
-	gcc $(GCC_ARGS) -c $<
+all: tests/common_test tests/interpreter_test
+	$(foreach test,$^,$(shell $(test)))
+
+tests/sample_test: tests/test_utils.o
+tests/common_test: common.o tests/test_utils.o
+tests/interpreter_test: common.o interpreter.o tests/test_utils.o tests/test_helpers.o
 
 clean:
-	rm -f *.o
-	cd tests; make clean
+	rm -f *.o tests/*.o tests/*_test
